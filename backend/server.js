@@ -16,7 +16,7 @@ connectDB();
 // body parser
 app.use(
   cors({
-    origin: "https://m-chat-azure.vercel.app",
+    origin: ["https://chat-v1-seven.vercel.app","http://localhost:5173"],
     credentials: true,
   })
 );
