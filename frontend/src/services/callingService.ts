@@ -147,18 +147,6 @@ class CallingService {
 
       // Initialize calling sound (for outgoing calls)
       this.callingSound = new Audio("/sounds/phone-calling-153844.mp3");
-      console.log("🔊 Calling sound Audio object created:", this.callingSound);
-      console.log("🔊 Calling sound src:", this.callingSound.src);
-      console.log("🔊 Calling sound readyState:", this.callingSound.readyState);
-      console.log(
-        "🔊 Calling sound networkState:",
-        this.callingSound.networkState
-      );
-      console.log(
-        "🔊 Calling sound assigned to this.callingSound:",
-        this.callingSound === this.callingSound
-      );
-
       this.callingSound.loop = true;
       this.callingSound.volume = 0.7;
 
@@ -173,9 +161,6 @@ class CallingService {
 
       this.callingSound.addEventListener("error", (e) => {
         console.error("❌ Error loading calling sound:", e);
-        console.error("❌ Error details:", this.callingSound?.error);
-        console.error("❌ Error code:", this.callingSound?.error?.code);
-        console.error("❌ Error message:", this.callingSound?.error?.message);
       });
 
       // Add loadstart event
@@ -192,17 +177,6 @@ class CallingService {
 
       // Initialize ringing sound (for incoming calls)
       this.ringingSound = new Audio("/sounds/reciever-ringing.mp3");
-      console.log("🔊 Ringing sound Audio object created:", this.ringingSound);
-      console.log("🔊 Ringing sound src:", this.ringingSound.src);
-      console.log("🔊 Ringing sound readyState:", this.ringingSound.readyState);
-      console.log(
-        "🔊 Ringing sound networkState:",
-        this.ringingSound.networkState
-      );
-      console.log(
-        "🔊 Ringing sound assigned to this.ringingSound:",
-        this.ringingSound === this.ringingSound
-      );
 
       this.ringingSound.loop = true;
       this.ringingSound.volume = 0.7;
@@ -218,9 +192,6 @@ class CallingService {
 
       this.ringingSound.addEventListener("error", (e) => {
         console.error("❌ Error loading ringing sound:", e);
-        console.error("❌ Error details:", this.ringingSound?.error);
-        console.error("❌ Error code:", this.ringingSound?.error?.code);
-        console.error("❌ Error message:", this.ringingSound?.error?.message);
       });
 
       // Add loadstart event
@@ -233,36 +204,11 @@ class CallingService {
         console.log("🔄 Ringing sound loading progress");
       });
 
-      console.log("✅ Ringing sound initialized");
-
-      console.log("🔊 Sound files loaded:", {
-        calling: this.callingSound.src,
-        ringing: this.ringingSound.src,
-      });
-
-      // Verify objects are not null
-      console.log("🔊 Final verification:", {
-        callingSoundExists: !!this.callingSound,
-        ringingSoundExists: !!this.ringingSound,
-        callingSoundType: typeof this.callingSound,
-        ringingSoundType: typeof this.ringingSound,
-      });
-
       // Force load the audio files
-      console.log("🔄 Attempting to force load audio files...");
       this.callingSound.load();
       this.ringingSound.load();
-      console.log("🔄 Audio files load() method called");
 
-      // Final verification after load
-      console.log("🔊 Final state after load:", {
-        callingSoundExists: !!this.callingSound,
-        ringingSoundExists: !!this.ringingSound,
-        callingSoundType: typeof this.callingSound,
-        ringingSoundType: typeof this.ringingSound,
-        callingSoundReadyState: this.callingSound?.readyState,
-        ringingSoundReadyState: this.ringingSound?.readyState,
-      });
+      
     } catch (error: any) {
       console.error("❌ CRITICAL ERROR in initializeCallSounds:", error);
       console.error("❌ Error stack:", error.stack);
@@ -270,11 +216,7 @@ class CallingService {
   }
 
   async setSocket(socket: Socket) {
-    console.log("🔌 CALLING SERVICE: setSocket called");
-    console.log("🔌 New socket ID:", socket?.id);
-    console.log("🔌 New socket connected:", socket?.connected);
-    console.log("🔌 Previous socket ID:", this.socket?.id);
-
+   
     // Clean up previous socket listeners if they exist
     if (this.socket) {
       console.log("🔌 CALLING SERVICE: Cleaning up previous socket...");
@@ -339,9 +281,6 @@ class CallingService {
   }
 
   private setupSocketListeners() {
-    console.log("🔌 CALLING SERVICE: setupSocketListeners called");
-    console.log("🔌 Socket exists:", !!this.socket);
-    console.log("🔌 Socket ID:", this.socket?.id);
     console.log("🔌 Socket connected:", this.socket?.connected);
     console.log("🔌 Setting up callTypeChanged listener...");
 
@@ -1158,402 +1097,491 @@ class CallingService {
   }
 
   private createPeerConnection(): RTCPeerConnection {
-    const configuration = {
-      iceServers: [
-        // STUN servers for same network
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-        { urls: "stun:stun3.l.google.com:19302" },
-        { urls: "stun:stun4.l.google.com:19302" },
+  const configuration: RTCConfiguration = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
 
-        // TURN servers for different networks (different PCs)
-        {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
+      // Free TURN server (openrelay)
+      {
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp"
+        ],
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
+    ],
+    iceCandidatePoolSize: 10,
+  };
 
-        // Additional TURN servers for better coverage
-        {
-          urls: "turn:global.turn.twilio.com:3478?transport=udp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        {
-          urls: "turn:global.turn.twilio.com:3478?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        {
-          urls: "turn:global.turn.twilio.com:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-      ],
-      iceCandidatePoolSize: 20, // Increased for better network discovery
-      iceTransportPolicy: "all" as RTCIceTransportPolicy, // Allow both UDP and TCP
-      // Network optimization for different PCs
-      bundlePolicy: "max-bundle" as RTCBundlePolicy,
-      rtcpMuxPolicy: "require" as RTCRtcpMuxPolicy,
-      // Force TURN usage for different networks
-    };
+  console.log("🔄 Creating PeerConnection with config:", configuration);
+  const pc = new RTCPeerConnection(configuration);
 
-    console.log("🔄 Creating peer connection with config:", configuration);
-    const pc = new RTCPeerConnection(configuration);
+  // Connection state monitoring
+  pc.onconnectionstatechange = () => {
+    console.log("📡 Connection state:", pc.connectionState);
+  };
+  pc.oniceconnectionstatechange = () => {
+    console.log("🧊 ICE state:", pc.iceConnectionState);
+    if (pc.iceConnectionState === "failed") {
+      console.error("❌ ICE failed! Likely NAT/firewall or TURN issue.");
+    }
+  };
 
-    // Monitor peer connection state changes
-    pc.addEventListener("connectionstatechange", () => {
-      console.log("🔄 PEER CONNECTION STATE CHANGE:", {
-        connectionState: pc.connectionState,
-        iceConnectionState: pc.iceConnectionState,
-        iceGatheringState: pc.iceGatheringState,
-        signalingState: pc.signalingState,
-      });
-    });
-
-    pc.addEventListener("iceconnectionstatechange", () => {
-      console.log("🧊 ICE CONNECTION STATE CHANGE:", pc.iceConnectionState);
-
-      // Log detailed ICE connection information for debugging
-      if (pc.iceConnectionState === "failed") {
-        console.error(
-          "❌ ICE connection failed - this often happens with long-distance calls"
-        );
-        console.error(
-          "❌ Possible causes: firewall, NAT, or network restrictions"
-        );
-        console.error("❌ TURN servers should help with relay");
-      } else if (pc.iceConnectionState === "disconnected") {
-        console.warn(
-          "⚠️ ICE connection disconnected - connection may be unstable"
-        );
-      } else if (pc.iceConnectionState === "connected") {
-        console.log("✅ ICE connection established successfully");
-      }
-    });
-
-    pc.addEventListener("signalingstatechange", () => {
-      console.log("📡 SIGNALING STATE CHANGE:", pc.signalingState);
-    });
-
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      console.log("🔄 ICE candidate generated:", event.candidate);
-
-      // Log network type for debugging
-      if (event.candidate) {
-        const candidate = event.candidate;
-        console.log("🌐 ICE Candidate Analysis:", {
-          type: candidate.type,
-          protocol: candidate.protocol,
-          address: candidate.address,
-          port: candidate.port,
-          isRelay: candidate.type === "relay",
-          isSrflx: candidate.type === "srflx",
-          isHost: candidate.type === "host",
-          isPrflx: candidate.type === "prflx",
-        });
-
-        // Prioritize TURN servers for different networks
-        if (candidate.type === "relay") {
-          console.log("🔄 TURN relay candidate - good for different PCs!");
-        } else if (candidate.type === "srflx") {
-          console.log(
-            "🔄 STUN reflexive candidate - may work for different PCs"
-          );
-        } else if (candidate.type === "host") {
-          console.log("🔄 Host candidate - only works for same network");
-        }
-      }
-
-      if (event.candidate && this.socket && this.activeCall) {
-        // Only send valid ICE candidates
-        if (this.isValidIceCandidate(event.candidate)) {
-          this.sendIceCandidate(event.candidate);
-        } else {
-          console.log("⚠️ Skipping invalid ICE candidate:", event.candidate);
-        }
-      }
-    };
-
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      console.log("🎵 ONTRACK EVENT FIRED!");
-      console.log("🎵 Event streams:", event.streams);
-      console.log("🎵 Event track:", event.track);
-      console.log("🎵 Track kind:", event.track.kind);
-      console.log("🎵 Track enabled:", event.track.enabled);
-      console.log("🎵 Track readyState:", event.track.readyState);
-      console.log(
-        "🎵 Current user role:",
-        this.activeCall ? "caller" : "receiver"
-      );
-      console.log("🎵 Peer connection state:", pc.connectionState);
-      console.log("🎵 ICE connection state:", pc.iceConnectionState);
-      console.log("🎵 Call ID:", this.activeCall?.callData?.callId);
-      console.log("🎵 Call type:", this.activeCall?.callData?.callType);
-
-      // Simple audio debugging
-      console.log("🔊 AUDIO DEBUG:");
-      console.log("🔊 Has remote stream:", !!event.streams[0]);
-      console.log(
-        "🔊 Stream track count:",
-        event.streams[0]?.getTracks().length
-      );
-      console.log(
-        "🔊 Audio tracks:",
-        event.streams[0]?.getAudioTracks().length
-      );
-      console.log(
-        "🔊 Video tracks:",
-        event.streams[0]?.getVideoTracks().length
-      );
-
-      this.remoteStream = event.streams[0];
-      console.log("🎵 Remote stream set:", this.remoteStream);
-      console.log(
-        "🎵 Remote stream tracks:",
-        this.remoteStream?.getTracks().length
-      );
-
-      // IMMEDIATE audio check
-      console.log("🔊 IMMEDIATE AUDIO CHECK:");
-      if (this.remoteStream) {
-        const audioTracks = this.remoteStream.getAudioTracks();
-        console.log("🔊 Audio tracks found:", audioTracks.length);
-        audioTracks.forEach((track, i) => {
-          console.log(`🔊 Audio track ${i}:`, {
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState,
-            id: track.id,
-          });
-        });
-      } else {
-        console.log("❌ No remote stream set!");
-      }
-
-      // Log all tracks in the received stream
-      if (event.streams && event.streams.length > 0) {
-        const stream = event.streams[0];
-        console.log("🎵 Received stream tracks:", {
-          totalTracks: stream.getTracks().length,
-          audioTracks: stream.getAudioTracks().length,
-          videoTracks: stream.getVideoTracks().length,
-          trackDetails: stream.getTracks().map((t, i) => ({
-            index: i,
-            kind: t.kind,
-            enabled: t.enabled,
-            muted: t.muted,
-            readyState: t.readyState,
-            id: t.id,
-            label: t.label,
-          })),
-        });
-
-        // Check each track for screen share indicators
-        stream.getTracks().forEach((track, index) => {
-          console.log(`🔍 Track ${index} analysis:`, {
-            kind: track.kind,
-            label: track.label,
-            id: track.id,
-            isScreenShare:
-              track.label?.toLowerCase().includes("screen") ||
-              track.label?.toLowerCase().includes("display") ||
-              track.label?.toLowerCase().includes("capture"),
-            hasScreenKeywords: track.label?.toLowerCase().includes("screen"),
-            hasDisplayKeywords: track.label?.toLowerCase().includes("display"),
-            hasCaptureKeywords: track.label?.toLowerCase().includes("capture"),
-          });
-        });
-      }
-
-      // Check if this is a screen share track
-      const trackLabel = event.track.label || "";
-      const isScreenShare =
-        trackLabel.toLowerCase().includes("screen") ||
-        trackLabel.toLowerCase().includes("display") ||
-        trackLabel.toLowerCase().includes("capture") ||
-        trackLabel.toLowerCase().includes("monitor") ||
-        trackLabel.toLowerCase().includes("window") ||
-        trackLabel.toLowerCase().includes("tab");
-
-      console.log("🔍 Screen share detection:", {
-        trackLabel,
-        isScreenShare,
-        kind: event.track.kind,
-        id: event.track.id,
-        hasScreen: trackLabel.toLowerCase().includes("screen"),
-        hasDisplay: trackLabel.toLowerCase().includes("display"),
-        hasCapture: trackLabel.toLowerCase().includes("capture"),
-        hasMonitor: trackLabel.toLowerCase().includes("monitor"),
-        hasWindow: trackLabel.toLowerCase().includes("window"),
-        hasTab: trackLabel.toLowerCase().includes("tab"),
+  // Candidate discovery
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      console.log("🌐 ICE candidate:", {
+        candidate: event.candidate.candidate,
+        type: event.candidate.type,
+        protocol: event.candidate.protocol,
+        relayOnly: event.candidate.type === "relay",
       });
 
-      if (event.track.kind === "video" && isScreenShare) {
-        console.log("🖥️ SCREEN SHARE TRACK RECEIVED!");
-        console.log("🖥️ Track label:", trackLabel);
-        console.log("🖥️ Track ID:", event.track.id);
-
-        // Create a new stream for screen share or add to existing remote stream
-        if (event.streams && event.streams.length > 0) {
-          this.screenShareStream = event.streams[0];
-          console.log(
-            "✅ Screen share stream received:",
-            this.screenShareStream
-          );
-        } else {
-          // Create a new stream for the screen share track
-          this.screenShareStream = new MediaStream([event.track]);
-          console.log("✅ Screen share stream created from track");
-        }
-
-        // Emit screen share received event
-        this.emit("screenShareReceived", {
-          stream: this.screenShareStream,
-          trackId: event.track.id,
-        });
+      if (this.socket && this.activeCall) {
+        this.sendIceCandidate(event.candidate);
       }
+    } else {
+      console.log("✅ ICE candidate gathering complete.");
+    }
+  };
 
-      // Debug: Check if this is the first time we're setting the remote stream
-      if (!this.remoteStream) {
-        console.log(
-          "🎵 This is the FIRST ontrack event - setting up remote stream"
-        );
-      } else {
-        console.log(
-          "🎵 This is an ADDITIONAL ontrack event - updating existing stream"
-        );
-      }
+  this.startConnectionQualityMonitoring(pc);
+  // Track handling
+  pc.ontrack = (event) => {
+    console.log("🎵 Remote track received:", {
+      kind: event.track.kind,
+      enabled: event.track.enabled,
+      readyState: event.track.readyState,
+      label: event.track.label,
+    });
 
-      this.onRemoteStream?.(this.remoteStream);
+    if (!this.remoteStream) {
+      this.remoteStream = new MediaStream();
+    }
+    this.remoteStream.addTrack(event.track);
 
-      // Start monitoring connection quality for debugging long-distance calls
-      this.startConnectionQualityMonitoring(pc);
+    // Attach immediately for testing
+    const audioElement = document.getElementById("remoteAudio") as HTMLAudioElement;
+    if (audioElement) {
+      audioElement.srcObject = this.remoteStream;
+      audioElement.play().catch((err) =>
+        console.error("⚠️ Failed to autoplay remote audio:", err)
+      );
+    }
 
-      // Simple check: is the remote stream actually working?
-      setTimeout(() => {
-        if (this.remoteStream) {
-          const audioTracks = this.remoteStream.getAudioTracks();
-          console.log("🔊 AFTER 2 SECONDS - AUDIO CHECK:");
-          console.log("🔊 Remote stream exists:", !!this.remoteStream);
-          console.log("🔊 Audio tracks:", audioTracks.length);
-          audioTracks.forEach((track, i) => {
-            console.log(`🔊 Audio track ${i}:`, {
-              enabled: track.enabled,
-              muted: track.muted,
-              readyState: track.readyState,
-              id: track.id,
-            });
-          });
-        } else {
-          console.log("❌ No remote stream after 2 seconds!");
-        }
-      }, 2000);
-    };
+    console.log("🔊 Current remote stream tracks:", {
+      audio: this.remoteStream.getAudioTracks().length,
+      video: this.remoteStream.getVideoTracks().length,
+    });
+  };
 
-    // Add connection state change logging
-    pc.onconnectionstatechange = () => {
-      console.log("🔄 Peer connection state changed:", pc.connectionState);
-    };
+  console.log("✅ PeerConnection created");
+  return pc;
+}
 
-    pc.oniceconnectionstatechange = () => {
-      console.log("🔄 ICE connection state changed:", pc.iceConnectionState);
-    };
+  // private createPeerConnection(): RTCPeerConnection {
+  //   const configuration = {
+  //     iceServers: [
+  //       // STUN servers for same network
+  //       { urls: "stun:stun.l.google.com:19302" },
+  //       { urls: "stun:stun1.l.google.com:19302" },
+  //       { urls: "stun:stun2.l.google.com:19302" },
+  //       { urls: "stun:stun3.l.google.com:19302" },
+  //       { urls: "stun:stun4.l.google.com:19302" },
 
-    pc.onsignalingstatechange = () => {
-      console.log("🔄 Signaling state changed:", pc.signalingState);
-    };
+  //       // TURN servers for different networks (different PCs)
+  //       {
+  //         urls: "turn:openrelay.metered.ca:80",
+  //         username: "openrelayproject",
+  //         credential: "openrelayproject",
+  //       },
+  //       {
+  //         urls: "turn:openrelay.metered.ca:443",
+  //         username: "openrelayproject",
+  //         credential: "openrelayproject",
+  //       },
+  //       {
+  //         urls: "turn:openrelay.metered.ca:443?transport=tcp",
+  //         username: "openrelayproject",
+  //         credential: "openrelayproject",
+  //       },
 
-    // Set up comprehensive WebRTC state monitoring
-    const comprehensiveMonitor = setInterval(() => {
-      if (this.localStream) {
-        const tracks = this.localStream.getTracks();
-        const videoTracks = this.localStream.getVideoTracks();
-        const audioTracks = this.localStream.getAudioTracks();
+  //       // Additional TURN servers for better coverage
+  //       {
+  //         urls: "turn:global.turn.twilio.com:3478?transport=udp",
+  //         username: "openrelayproject",
+  //         credential: "openrelayproject",
+  //       },
+  //       {
+  //         urls: "turn:global.turn.twilio.com:3478?transport=tcp",
+  //         username: "openrelayproject",
+  //         credential: "openrelayproject",
+  //       },
+  //       {
+  //         urls: "turn:global.turn.twilio.com:443?transport=tcp",
+  //         username: "openrelayproject",
+  //         credential: "openrelayproject",
+  //       },
+  //     ],
+  //     iceCandidatePoolSize: 20, // Increased for better network discovery
+  //     iceTransportPolicy: "all" as RTCIceTransportPolicy, // Allow both UDP and TCP
+  //     // Network optimization for different PCs
+  //     bundlePolicy: "max-bundle" as RTCBundlePolicy,
+  //     rtcpMuxPolicy: "require" as RTCRtcpMuxPolicy,
+  //     // Force TURN usage for different networks
+  //   };
 
-        console.log("📊 COMPREHENSIVE MONITOR:", {
-          timestamp: new Date().toISOString(),
-          localStream: {
-            id: this.localStream.id,
-            active: this.localStream.active,
-            trackCount: tracks.length,
-            videoTracks: videoTracks.length,
-            audioTracks: audioTracks.length,
-          },
-          peerConnection: {
-            connectionState: pc.connectionState,
-            iceConnectionState: pc.iceConnectionState,
-            iceGatheringState: pc.iceGatheringState,
-            signalingState: pc.signalingState,
-            localDescription: pc.localDescription?.type,
-            remoteDescription: pc.remoteDescription?.type,
-          },
-          activeCall: {
-            exists: !!this.activeCall,
-            callType: this.activeCall?.callData?.callType,
-            status: this.activeCall?.callData?.status,
-            callerId: this.activeCall?.callData?.callerId,
-            receiverId: this.activeCall?.callData?.receiverId,
-          },
-          remoteStream: {
-            exists: !!this.remoteStream,
-            trackCount: this.remoteStream?.getTracks().length || 0,
-            videoTracks: this.remoteStream?.getVideoTracks().length || 0,
-            audioTracks: this.remoteStream?.getAudioTracks().length || 0,
-          },
-          screenShare: {
-            isSharing: this.isScreenSharing,
-            hasRemoteStream: !!this.screenShareStream,
-            remoteTrackCount: this.screenShareStream?.getTracks().length || 0,
-          },
-          socketStatus: {
-            hasSocket: !!this.socket,
-            isConnected: this.socket?.connected || false,
-            socketId: this.socket?.id || null,
-            connectionState: this.socket?.connected
-              ? "connected"
-              : "disconnected",
-            socketManagerStatus: socketManager.getSocketStatus(),
-          },
-          eventCounts: this.eventCounts,
-          currentUserId: this.getCurrentUserId(),
-        });
+  //   console.log("🔄 Creating peer connection with config:", configuration);
+  //   const pc = new RTCPeerConnection(configuration);
 
-        // Alert on critical issues
-        if (
-          videoTracks.length === 0 &&
-          this.activeCall?.callData?.callType === "video"
-        ) {
-          console.log("🚨 CRITICAL: Video tracks disappeared on video call!");
-          console.log("🚨 Full state dump:", {
-            localStream: this.localStream,
-            peerConnection: pc,
-            activeCall: this.activeCall,
-            remoteStream: this.remoteStream,
-          });
-        }
-      }
-    }, 1000); // Check every second for more granular monitoring
+  //   // Monitor peer connection state changes
+  //   pc.addEventListener("connectionstatechange", () => {
+  //     console.log("🔄 PEER CONNECTION STATE CHANGE:", {
+  //       connectionState: pc.connectionState,
+  //       iceConnectionState: pc.iceConnectionState,
+  //       iceGatheringState: pc.iceGatheringState,
+  //       signalingState: pc.signalingState,
+  //     });
+  //   });
 
-    // Store the interval ID so we can clear it later
-    this.trackMonitorInterval = comprehensiveMonitor as unknown as number;
+  //   pc.addEventListener("iceconnectionstatechange", () => {
+  //     console.log("🧊 ICE CONNECTION STATE CHANGE:", pc.iceConnectionState);
 
-    console.log("✅ Peer connection created with event handlers");
-    return pc;
-  }
+  //     // Log detailed ICE connection information for debugging
+  //     if (pc.iceConnectionState === "failed") {
+  //       console.error(
+  //         "❌ ICE connection failed - this often happens with long-distance calls"
+  //       );
+  //       console.error(
+  //         "❌ Possible causes: firewall, NAT, or network restrictions"
+  //       );
+  //       console.error("❌ TURN servers should help with relay");
+  //     } else if (pc.iceConnectionState === "disconnected") {
+  //       console.warn(
+  //         "⚠️ ICE connection disconnected - connection may be unstable"
+  //       );
+  //     } else if (pc.iceConnectionState === "connected") {
+  //       console.log("✅ ICE connection established successfully");
+  //     }
+  //   });
+
+  //   pc.addEventListener("signalingstatechange", () => {
+  //     console.log("📡 SIGNALING STATE CHANGE:", pc.signalingState);
+  //   });
+
+  //   // Handle ICE candidates
+  //   pc.onicecandidate = (event) => {
+  //     console.log("🔄 ICE candidate generated:", event.candidate);
+
+  //     // Log network type for debugging
+  //     if (event.candidate) {
+  //       const candidate = event.candidate;
+  //       console.log("🌐 ICE Candidate Analysis:", {
+  //         type: candidate.type,
+  //         protocol: candidate.protocol,
+  //         address: candidate.address,
+  //         port: candidate.port,
+  //         isRelay: candidate.type === "relay",
+  //         isSrflx: candidate.type === "srflx",
+  //         isHost: candidate.type === "host",
+  //         isPrflx: candidate.type === "prflx",
+  //       });
+
+  //       // Prioritize TURN servers for different networks
+  //       if (candidate.type === "relay") {
+  //         console.log("🔄 TURN relay candidate - good for different PCs!");
+  //       } else if (candidate.type === "srflx") {
+  //         console.log(
+  //           "🔄 STUN reflexive candidate - may work for different PCs"
+  //         );
+  //       } else if (candidate.type === "host") {
+  //         console.log("🔄 Host candidate - only works for same network");
+  //       }
+  //     }
+
+  //     if (event.candidate && this.socket && this.activeCall) {
+  //       // Only send valid ICE candidates
+  //       if (this.isValidIceCandidate(event.candidate)) {
+  //         this.sendIceCandidate(event.candidate);
+  //       } else {
+  //         console.log("⚠️ Skipping invalid ICE candidate:", event.candidate);
+  //       }
+  //     }
+  //   };
+
+  //   // Handle remote stream
+  //   pc.ontrack = (event) => {
+  //     console.log("🎵 ONTRACK EVENT FIRED!");
+  //     console.log("🎵 Event streams:", event.streams);
+  //     console.log("🎵 Event track:", event.track);
+  //     console.log("🎵 Track kind:", event.track.kind);
+  //     console.log("🎵 Track enabled:", event.track.enabled);
+  //     console.log("🎵 Track readyState:", event.track.readyState);
+  //     console.log(
+  //       "🎵 Current user role:",
+  //       this.activeCall ? "caller" : "receiver"
+  //     );
+  //     console.log("🎵 Peer connection state:", pc.connectionState);
+  //     console.log("🎵 ICE connection state:", pc.iceConnectionState);
+  //     console.log("🎵 Call ID:", this.activeCall?.callData?.callId);
+  //     console.log("🎵 Call type:", this.activeCall?.callData?.callType);
+
+  //     // Simple audio debugging
+  //     console.log("🔊 AUDIO DEBUG:");
+  //     console.log("🔊 Has remote stream:", !!event.streams[0]);
+  //     console.log(
+  //       "🔊 Stream track count:",
+  //       event.streams[0]?.getTracks().length
+  //     );
+  //     console.log(
+  //       "🔊 Audio tracks:",
+  //       event.streams[0]?.getAudioTracks().length
+  //     );
+  //     console.log(
+  //       "🔊 Video tracks:",
+  //       event.streams[0]?.getVideoTracks().length
+  //     );
+
+  //     this.remoteStream = event.streams[0];
+  //     console.log("🎵 Remote stream set:", this.remoteStream);
+  //     console.log(
+  //       "🎵 Remote stream tracks:",
+  //       this.remoteStream?.getTracks().length
+  //     );
+
+  //     // IMMEDIATE audio check
+  //     console.log("🔊 IMMEDIATE AUDIO CHECK:");
+  //     if (this.remoteStream) {
+  //       const audioTracks = this.remoteStream.getAudioTracks();
+  //       console.log("🔊 Audio tracks found:", audioTracks.length);
+  //       audioTracks.forEach((track, i) => {
+  //         console.log(`🔊 Audio track ${i}:`, {
+  //           enabled: track.enabled,
+  //           muted: track.muted,
+  //           readyState: track.readyState,
+  //           id: track.id,
+  //         });
+  //       });
+  //     } else {
+  //       console.log("❌ No remote stream set!");
+  //     }
+
+  //     // Log all tracks in the received stream
+  //     if (event.streams && event.streams.length > 0) {
+  //       const stream = event.streams[0];
+  //       console.log("🎵 Received stream tracks:", {
+  //         totalTracks: stream.getTracks().length,
+  //         audioTracks: stream.getAudioTracks().length,
+  //         videoTracks: stream.getVideoTracks().length,
+  //         trackDetails: stream.getTracks().map((t, i) => ({
+  //           index: i,
+  //           kind: t.kind,
+  //           enabled: t.enabled,
+  //           muted: t.muted,
+  //           readyState: t.readyState,
+  //           id: t.id,
+  //           label: t.label,
+  //         })),
+  //       });
+
+  //       // Check each track for screen share indicators
+  //       stream.getTracks().forEach((track, index) => {
+  //         console.log(`🔍 Track ${index} analysis:`, {
+  //           kind: track.kind,
+  //           label: track.label,
+  //           id: track.id,
+  //           isScreenShare:
+  //             track.label?.toLowerCase().includes("screen") ||
+  //             track.label?.toLowerCase().includes("display") ||
+  //             track.label?.toLowerCase().includes("capture"),
+  //           hasScreenKeywords: track.label?.toLowerCase().includes("screen"),
+  //           hasDisplayKeywords: track.label?.toLowerCase().includes("display"),
+  //           hasCaptureKeywords: track.label?.toLowerCase().includes("capture"),
+  //         });
+  //       });
+  //     }
+
+  //     // Check if this is a screen share track
+  //     const trackLabel = event.track.label || "";
+  //     const isScreenShare =
+  //       trackLabel.toLowerCase().includes("screen") ||
+  //       trackLabel.toLowerCase().includes("display") ||
+  //       trackLabel.toLowerCase().includes("capture") ||
+  //       trackLabel.toLowerCase().includes("monitor") ||
+  //       trackLabel.toLowerCase().includes("window") ||
+  //       trackLabel.toLowerCase().includes("tab");
+
+  //     console.log("🔍 Screen share detection:", {
+  //       trackLabel,
+  //       isScreenShare,
+  //       kind: event.track.kind,
+  //       id: event.track.id,
+  //       hasScreen: trackLabel.toLowerCase().includes("screen"),
+  //       hasDisplay: trackLabel.toLowerCase().includes("display"),
+  //       hasCapture: trackLabel.toLowerCase().includes("capture"),
+  //       hasMonitor: trackLabel.toLowerCase().includes("monitor"),
+  //       hasWindow: trackLabel.toLowerCase().includes("window"),
+  //       hasTab: trackLabel.toLowerCase().includes("tab"),
+  //     });
+
+  //     if (event.track.kind === "video" && isScreenShare) {
+  //       console.log("🖥️ SCREEN SHARE TRACK RECEIVED!");
+  //       console.log("🖥️ Track label:", trackLabel);
+  //       console.log("🖥️ Track ID:", event.track.id);
+
+  //       // Create a new stream for screen share or add to existing remote stream
+  //       if (event.streams && event.streams.length > 0) {
+  //         this.screenShareStream = event.streams[0];
+  //         console.log(
+  //           "✅ Screen share stream received:",
+  //           this.screenShareStream
+  //         );
+  //       } else {
+  //         // Create a new stream for the screen share track
+  //         this.screenShareStream = new MediaStream([event.track]);
+  //         console.log("✅ Screen share stream created from track");
+  //       }
+
+  //       // Emit screen share received event
+  //       this.emit("screenShareReceived", {
+  //         stream: this.screenShareStream,
+  //         trackId: event.track.id,
+  //       });
+  //     }
+
+  //     // Debug: Check if this is the first time we're setting the remote stream
+  //     if (!this.remoteStream) {
+  //       console.log(
+  //         "🎵 This is the FIRST ontrack event - setting up remote stream"
+  //       );
+  //     } else {
+  //       console.log(
+  //         "🎵 This is an ADDITIONAL ontrack event - updating existing stream"
+  //       );
+  //     }
+
+  //     this.onRemoteStream?.(this.remoteStream);
+
+  //     // Start monitoring connection quality for debugging long-distance calls
+  //     this.startConnectionQualityMonitoring(pc);
+
+  //     // Simple check: is the remote stream actually working?
+  //     setTimeout(() => {
+  //       if (this.remoteStream) {
+  //         const audioTracks = this.remoteStream.getAudioTracks();
+  //         console.log("🔊 AFTER 2 SECONDS - AUDIO CHECK:");
+  //         console.log("🔊 Remote stream exists:", !!this.remoteStream);
+  //         console.log("🔊 Audio tracks:", audioTracks.length);
+  //         audioTracks.forEach((track, i) => {
+  //           console.log(`🔊 Audio track ${i}:`, {
+  //             enabled: track.enabled,
+  //             muted: track.muted,
+  //             readyState: track.readyState,
+  //             id: track.id,
+  //           });
+  //         });
+  //       } else {
+  //         console.log("❌ No remote stream after 2 seconds!");
+  //       }
+  //     }, 2000);
+  //   };
+
+  //   // Add connection state change logging
+  //   pc.onconnectionstatechange = () => {
+  //     console.log("🔄 Peer connection state changed:", pc.connectionState);
+  //   };
+
+  //   pc.oniceconnectionstatechange = () => {
+  //     console.log("🔄 ICE connection state changed:", pc.iceConnectionState);
+  //   };
+
+  //   pc.onsignalingstatechange = () => {
+  //     console.log("🔄 Signaling state changed:", pc.signalingState);
+  //   };
+
+  //   // Set up comprehensive WebRTC state monitoring
+  //   const comprehensiveMonitor = setInterval(() => {
+  //     if (this.localStream) {
+  //       const tracks = this.localStream.getTracks();
+  //       const videoTracks = this.localStream.getVideoTracks();
+  //       const audioTracks = this.localStream.getAudioTracks();
+
+  //       console.log("📊 COMPREHENSIVE MONITOR:", {
+  //         timestamp: new Date().toISOString(),
+  //         localStream: {
+  //           id: this.localStream.id,
+  //           active: this.localStream.active,
+  //           trackCount: tracks.length,
+  //           videoTracks: videoTracks.length,
+  //           audioTracks: audioTracks.length,
+  //         },
+  //         peerConnection: {
+  //           connectionState: pc.connectionState,
+  //           iceConnectionState: pc.iceConnectionState,
+  //           iceGatheringState: pc.iceGatheringState,
+  //           signalingState: pc.signalingState,
+  //           localDescription: pc.localDescription?.type,
+  //           remoteDescription: pc.remoteDescription?.type,
+  //         },
+  //         activeCall: {
+  //           exists: !!this.activeCall,
+  //           callType: this.activeCall?.callData?.callType,
+  //           status: this.activeCall?.callData?.status,
+  //           callerId: this.activeCall?.callData?.callerId,
+  //           receiverId: this.activeCall?.callData?.receiverId,
+  //         },
+  //         remoteStream: {
+  //           exists: !!this.remoteStream,
+  //           trackCount: this.remoteStream?.getTracks().length || 0,
+  //           videoTracks: this.remoteStream?.getVideoTracks().length || 0,
+  //           audioTracks: this.remoteStream?.getAudioTracks().length || 0,
+  //         },
+  //         screenShare: {
+  //           isSharing: this.isScreenSharing,
+  //           hasRemoteStream: !!this.screenShareStream,
+  //           remoteTrackCount: this.screenShareStream?.getTracks().length || 0,
+  //         },
+  //         socketStatus: {
+  //           hasSocket: !!this.socket,
+  //           isConnected: this.socket?.connected || false,
+  //           socketId: this.socket?.id || null,
+  //           connectionState: this.socket?.connected
+  //             ? "connected"
+  //             : "disconnected",
+  //           socketManagerStatus: socketManager.getSocketStatus(),
+  //         },
+  //         eventCounts: this.eventCounts,
+  //         currentUserId: this.getCurrentUserId(),
+  //       });
+
+  //       // Alert on critical issues
+  //       if (
+  //         videoTracks.length === 0 &&
+  //         this.activeCall?.callData?.callType === "video"
+  //       ) {
+  //         console.log("🚨 CRITICAL: Video tracks disappeared on video call!");
+  //         console.log("🚨 Full state dump:", {
+  //           localStream: this.localStream,
+  //           peerConnection: pc,
+  //           activeCall: this.activeCall,
+  //           remoteStream: this.remoteStream,
+  //         });
+  //       }
+  //     }
+  //   }, 1000); // Check every second for more granular monitoring
+
+  //   // Store the interval ID so we can clear it later
+  //   this.trackMonitorInterval = comprehensiveMonitor as unknown as number;
+
+  //   console.log("✅ Peer connection created with event handlers");
+  //   return pc;
+  // }
 
   private async handleOffer(data: any) {
     try {
