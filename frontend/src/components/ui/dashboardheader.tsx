@@ -1,7 +1,7 @@
 import { FC, useState, useEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
 import { MdVideoCall, MdWifiCalling3 } from "react-icons/md";
-import CallDialog from "./callDialog";
+import UnifiedCallDialog from "./unifiedCallDialog";
 import callingService from "../../services/callingService";
 
 interface DashboardheaderProps {
@@ -212,7 +212,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
       {/* Call Dialog */}
       {isCallDialogOpen && (
-        <CallDialog
+        <UnifiedCallDialog
           isOpen={isCallDialogOpen}
           onClose={() => {
             setIsCallDialogOpen(false);

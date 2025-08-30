@@ -4,7 +4,7 @@ import Dashboardheader from "../components/ui/dashboardheader";
 import Dashboardbottom from "../components/ui/dashboardbottom";
 import Header from "../components/header";
 import Notification from "../components/ui/notification";
-import CallDialog from "../components/ui/callDialog";
+import UnifiedCallDialog from "../components/ui/unifiedCallDialog";
 import { FaCheck } from "react-icons/fa6";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
@@ -34,9 +34,10 @@ interface CallData {
   callerName: string;
   callType: "audio" | "video";
   callerAvatar?: string;
-  callId?: string;
-  receiverId?: string;
-  status?: string;
+  callId: string;
+  receiverId: string;
+  status: "ringing" | "active" | "ended";
+  platform: "jitsi";
 }
 
 const Home: FC<HomeProps> = () => {
@@ -190,9 +191,10 @@ const Home: FC<HomeProps> = () => {
                 callerId: data.callerId,
                 receiverId: authUser._id, // Add the missing receiverId
                 callType: data.callType,
-                callerName: data.callerName || "Unknown",
+                callerName: data.callName || "Unknown",
                 callerAvatar: data.callerAvatar,
                 status: "ringing" as const, // Add the missing status
+                platform: "jitsi" as const, // Add the platform property
               });
               setIsCallDialogOpen(true);
             }
@@ -1100,7 +1102,7 @@ const Home: FC<HomeProps> = () => {
 
       {/* Incoming Call Dialog */}
       {incomingCall && (
-        <CallDialog
+        <UnifiedCallDialog
           isOpen={isCallDialogOpen}
           onClose={() => {
             setIsCallDialogOpen(false);

@@ -271,6 +271,8 @@ class UnifiedCallingService {
         callStartTime: Date.now(),
       };
 
+      console.log("✅ Active call set:", this.activeCall);
+
       // Accept call using Jitsi
       const jitsiCallData = {
         callId: callData.callId,
@@ -283,16 +285,19 @@ class UnifiedCallingService {
         roomName: callData.roomName || "",
       };
 
+      console.log("🎯 Calling Jitsi service with data:", jitsiCallData);
+
       const success = await jitsiCallingService.acceptCall(jitsiCallData);
 
       if (success) {
         console.log("✅ Call accepted successfully using Jitsi");
         return true;
       } else {
+        console.error("❌ Jitsi service failed to accept call");
         throw new Error("Failed to accept call using Jitsi");
       }
     } catch (error) {
-      console.error("Failed to accept call:", error);
+      console.error("❌ Failed to accept call:", error);
       this.cleanupCall();
       return false;
     }

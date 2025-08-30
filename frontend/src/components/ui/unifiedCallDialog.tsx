@@ -138,10 +138,12 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
     if (!callData) return;
 
     try {
+      console.log("🔄 Accepting call with data:", callData);
       setIsConnecting(true);
       const success = await unifiedCallingService.acceptCall(callData);
 
       if (success) {
+        console.log("✅ Call accepted successfully, now joining meeting...");
         // Join the meeting if it's a Jitsi call
         if (callData.platform === "jitsi" && callData.roomName) {
           const currentUser = JSON.parse(
@@ -149,19 +151,32 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
           );
           const displayName = currentUser.name || "User";
 
+          console.log("🎯 Joining Jitsi meeting:", {
+            roomName: callData.roomName,
+            displayName,
+            isAudioOnly: callData.callType === "audio",
+          });
+
           await unifiedCallingService.joinMeeting(
             callData.roomName,
             displayName,
             callData.callType === "audio"
           );
+
+          console.log("✅ Jitsi meeting joined successfully");
+        } else {
+          console.warn("⚠️ No room name or platform info for Jitsi call");
         }
 
         if (onAccept) {
           onAccept();
         }
+      } else {
+        console.error("❌ Failed to accept call");
+        setIsConnecting(false);
       }
     } catch (error) {
-      console.error("Error accepting call:", error);
+      console.error("❌ Error accepting call:", error);
       setIsConnecting(false);
     }
   };
@@ -388,13 +403,27 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
           )}
         </div>
 
-        {/* Jitsi Container */}
-        <div
-          ref={jitsiContainerRef}
-          id="jitsi-container"
-          className="w-full h-64 bg-gray-100 rounded-lg mt-4"
-          style={{ display: isCallActive ? "block" : "none" }}
-        ></div>
+        {/* Jitsi Container - Show when connecting or active */}
+        {(isConnecting || isCallActive) && (
+          <div
+            ref={jitsiContainerRef}
+            id="jitsi-container"
+            className="w-full h-96 bg-gray-100 rounded-lg mt-4 border-2 border-dashed border-gray-300"
+            style={{
+              display: "block",
+              minHeight: "400px",
+            }}
+          >
+            {!isCallActive && (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-500">
+                  <div className="text-4xl mb-2">🎥</div>
+                  <p>Jitsi meeting will appear here...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Close Button */}
         <button

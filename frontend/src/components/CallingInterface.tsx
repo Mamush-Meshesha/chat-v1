@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import unifiedCallingService, {
   UnifiedCallData,
-} from "../../services/unifiedCallingService";
-import UnifiedCallDialog from "../ui/unifiedCallDialog";
+} from "../services/unifiedCallingService";
+import UnifiedCallDialog from "./ui/unifiedCallDialog";
 
 interface User {
   _id: string;
@@ -11,7 +11,7 @@ interface User {
   avatar?: string;
 }
 
-const UnifiedCallingExample: React.FC = () => {
+const CallingInterface: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [callType, setCallType] = useState<"audio" | "video">("video");
@@ -71,7 +71,7 @@ const UnifiedCallingExample: React.FC = () => {
 
   const loadUsers = async () => {
     try {
-      // Simulate loading users (replace with actual API call)
+      // TODO: Replace with actual API call to get users from your backend
       const mockUsers: User[] = [
         {
           _id: "user1",
@@ -159,7 +159,7 @@ const UnifiedCallingExample: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">
-        Jitsi-Only Calling System Example
+        📞 Video & Audio Calling
       </h1>
 
       {/* Platform Information */}
@@ -182,14 +182,14 @@ const UnifiedCallingExample: React.FC = () => {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl mb-2 text-gray-400">❌</div>
-            <div className="text-sm font-medium">WebRTC</div>
-            <div className="text-xs text-gray-500">Disabled</div>
-          </div>
-          <div className="text-center">
             <div className="text-2xl mb-2 text-blue-500">🎯</div>
             <div className="text-sm font-medium">System</div>
             <div className="text-xs text-gray-500">Jitsi-Only</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl mb-2 text-green-500">✨</div>
+            <div className="text-sm font-medium">Quality</div>
+            <div className="text-xs text-gray-500">HD Calls</div>
           </div>
         </div>
 
@@ -205,21 +205,21 @@ const UnifiedCallingExample: React.FC = () => {
           >
             Set Jitsi as Preferred
           </button>
-          <div className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-500">
-            WebRTC Fallback: Disabled
+          <div className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700">
+            🎯 Jitsi-Only System Active
           </div>
         </div>
 
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="text-sm font-medium text-blue-700 mb-2">
-            🎯 Jitsi-Only System
+            🎯 High-Quality Calling Features
           </h3>
           <div className="text-xs text-blue-600 space-y-1">
-            <p>✅ All calls use Jitsi Meet for consistent experience</p>
-            <p>✅ High-quality video and audio calls</p>
-            <p>✅ Built-in screen sharing, chat, and recording</p>
-            <p>✅ No platform switching or fallback complexity</p>
+            <p>✅ HD video and crystal-clear audio calls</p>
+            <p>✅ Built-in screen sharing and presentation mode</p>
+            <p>✅ Chat, recording, and livestreaming capabilities</p>
             <p>✅ Works on all devices and browsers</p>
+            <p>✅ No additional software installation required</p>
           </div>
         </div>
       </div>
@@ -291,8 +291,8 @@ const UnifiedCallingExample: React.FC = () => {
           disabled={!selectedUser}
           className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
         >
-          {callType === "video" ? "📹" : "🎵"} Initiate{" "}
-          {callType === "video" ? "Video" : "Audio"} Call with Jitsi
+          {callType === "video" ? "📹" : "🎵"} Start{" "}
+          {callType === "video" ? "Video" : "Audio"} Call
         </button>
       </div>
 
@@ -300,7 +300,7 @@ const UnifiedCallingExample: React.FC = () => {
       {currentCall && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Current Call
+            Active Call
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -329,28 +329,15 @@ const UnifiedCallingExample: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-700">
-              🎯 This call is using Jitsi Meet for high-quality communication
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">
+              🎯 Call is active using Jitsi Meet for high-quality communication
             </p>
           </div>
         </div>
       )}
 
-      {/* Debug Information */}
-      <div className="bg-gray-100 rounded-lg p-4">
-        <h3 className="text-lg font-medium text-gray-800 mb-2">
-          Debug Information
-        </h3>
-        <div className="text-sm text-gray-600 space-y-1">
-          <div>Current Call: {currentCall ? "Active" : "None"}</div>
-          <div>Platform Stats: {JSON.stringify(platformStats, null, 2)}</div>
-          <div>Selected User: {selectedUser?.name || "None"}</div>
-          <div>Call Type: {callType}</div>
-        </div>
-      </div>
-
-      {/* UnifiedCallDialog for outgoing/active calls */}
+      {/* Call Dialogs */}
       {showCallDialog && (
         <UnifiedCallDialog
           isOpen={showCallDialog}
@@ -364,7 +351,6 @@ const UnifiedCallingExample: React.FC = () => {
         />
       )}
 
-      {/* UnifiedCallDialog for incoming calls */}
       {showIncomingCall && incomingCall && (
         <UnifiedCallDialog
           isOpen={showIncomingCall}
@@ -383,4 +369,4 @@ const UnifiedCallingExample: React.FC = () => {
   );
 };
 
-export default UnifiedCallingExample;
+export default CallingInterface;

@@ -377,12 +377,21 @@ class JitsiCallingService {
     try {
       console.log("🔄 Joining Jitsi meeting:", roomName);
 
+      // Find the Jitsi container
+      const jitsiContainer = document.getElementById("jitsi-container");
+      if (!jitsiContainer) {
+        console.error("❌ Jitsi container not found!");
+        throw new Error("Jitsi container not found");
+      }
+
+      console.log("✅ Found Jitsi container:", jitsiContainer);
+
       // Jitsi configuration
       const config = {
         roomName,
         width: "100%",
         height: "100%",
-        parentNode: document.getElementById("jitsi-container") || document.body,
+        parentNode: jitsiContainer,
         userInfo: {
           displayName,
           email: this.getCurrentUserInfo()?.email || "user@example.com",
@@ -466,8 +475,11 @@ class JitsiCallingService {
         },
       };
 
+      console.log("🎯 Jitsi config:", config);
+
       // Create Jitsi meeting
       const jitsiApi = new (JitsiMeeting as any)(config);
+      console.log("✅ Jitsi meeting created:", jitsiApi);
 
       // Store the API reference
       if (this.activeCall) {
@@ -539,7 +551,6 @@ class JitsiCallingService {
           console.log("Video conference left:", data);
           this.endCall();
         },
-
         videoQualityChanged: (data: any) => {
           console.log("Video quality changed:", data);
         },
