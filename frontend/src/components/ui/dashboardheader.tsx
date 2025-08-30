@@ -3,6 +3,7 @@ import { BsThreeDots } from "react-icons/bs";
 import { MdVideoCall, MdWifiCalling3 } from "react-icons/md";
 import UnifiedCallDialog from "./unifiedCallDialog";
 import unifiedCallingService from "../../services/unifiedCallingService";
+import socketManager from "../../services/socketManager"; // Added import for socketManager
 
 interface DashboardheaderProps {
   currentUserChat: any;
@@ -47,6 +48,112 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       // Cleanup is handled by the unified calling service
     };
   }, [socket]);
+
+  // Set up socket event listeners for calling
+  useEffect(() => {
+    if (socketManager.socket && currentUserChat?._id) {
+      console.log("🔌 Setting up socket event listeners for calling...");
+
+      // Listen for incoming calls
+      socketManager.socket.on("incomingCall", (data) => {
+        console.log("📞 INCOMING CALL RECEIVED:", data);
+        
+        // Set incoming call state
+        setIsIncomingCall(true);
+        setCallType(data.callType);
+        
+        // Set incoming call data
+        setOutgoingCallData({
+          callId: data.callId,
+          callerId: data.callerId,
+          receiverId: data.receiverId,
+          callType: data.callType,
+          callerName: data.callerName || "Unknown",
+          callerAvatar: data.callerAvatar || "/profile.jpg",
+          platform: data.platform || "jitsi",
+          status: "ringing"
+        });
+        
+        // Open call dialog
+        setIsCallDialogOpen(true);
+        
+        // Play ringing sound
+        playRingingSound();
+      });
+
+      // Listen for call accepted
+      socketManager.socket.on("callAccepted", (data) => {
+        console.log("✅ Call accepted:", data);
+        setIsCallActive(true);
+        setIsIncomingCall(false);
+      });
+
+      // Listen for call declined
+      socketManager.socket.on("callDeclined", (data) => {
+        console.log("❌ Call declined:", data);
+        setIsCallDialogOpen(false);
+        setIsIncomingCall(false);
+        setOutgoingCallData(null);
+        stopRingingSound();
+      });
+
+      // Listen for call ended
+      socketManager.socket.on("callEnded", (data) => {
+        console.log("🔚 Call ended:", data);
+        setIsCallDialogOpen(false);
+        setIsCallActive(false);
+        setIsIncomingCall(false);
+        setOutgoingCallData(null);
+        stopRingingSound();
+      });
+
+      // Listen for call failed
+      socketManager.socket.on("callFailed", (data) => {
+        console.log("💥 Call failed:", data);
+        setIsCallDialogOpen(false);
+        setIsIncomingCall(false);
+        setOutgoingCallData(null);
+        stopRingingSound();
+      });
+
+      return () => {
+        // Clean up event listeners
+        if (socketManager.socket) {
+          socketManager.socket.off("incomingCall");
+          socketManager.socket.off("callAccepted");
+          socketManager.socket.off("callDeclined");
+          socketManager.socket.off("callEnded");
+          socketManager.socket.off("callFailed");
+        }
+      };
+    }
+  }, [socketManager.socket, currentUserChat?._id]);
+
+  // Audio functions for ringing
+  const playRingingSound = () => {
+    try {
+      const audio = new Audio("/sounds/reciever-ringing.mp3");
+      audio.loop = true;
+      audio.volume = 0.5;
+      audio.play().catch(console.error);
+      // Store reference to stop later
+      (window as any).ringingAudio = audio;
+    } catch (error) {
+      console.error("Failed to play ringing sound:", error);
+    }
+  };
+
+  const stopRingingSound = () => {
+    try {
+      if ((window as any).ringingAudio) {
+        (window as any).ringingAudio.pause();
+        (window as any).ringingAudio.currentTime = 0;
+        (window as any).ringingAudio = null;
+      }
+    } catch (error) {
+      console.error("Failed to stop ringing sound:", error);
+    }
+  };
 
   if (!currentUserChat) return null;
 
