@@ -42,6 +42,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     console.log("🔍 STATE CHANGE DEBUG:", {
       isCallDialogOpen,
       outgoingCallData: outgoingCallData ? "exists" : "null",
+      roomName: outgoingCallData?.roomName || "undefined",
       isCallActive,
       isIncomingCall,
     });
@@ -125,7 +126,15 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         };
 
         console.log("🔍 Setting outgoingCallData to:", incomingCallData);
+        console.log("🔍 Room name being set:", data.roomName);
+        console.log("🔍 Full incomingCallData object:", incomingCallData);
+
         setOutgoingCallData(incomingCallData);
+
+        console.log(
+          "✅ outgoingCallData state updated with roomName:",
+          data.roomName
+        );
 
         // Open call dialog
         setIsCallDialogOpen(true);
@@ -500,6 +509,8 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           {console.log("🎯 RENDERING CALL DIALOG:", {
             isCallDialogOpen,
             outgoingCallData,
+            roomName: outgoingCallData.roomName,
+            hasRoomName: !!outgoingCallData.roomName,
           })}
           <UnifiedCallDialog
             isOpen={isCallDialogOpen}
