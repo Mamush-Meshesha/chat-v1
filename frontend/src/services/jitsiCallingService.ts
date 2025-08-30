@@ -314,7 +314,7 @@ class JitsiCallingService {
       console.log("🔌 Socket being used:", this.socket?.id);
       console.log("🔌 Socket connected:", this.socket?.connected);
       console.log("🔌 SocketManager socket:", socketManager.getSocket()?.id);
-      
+
       this.socket.emit("initiateCall", {
         callerId: callData.callerId,
         receiverId: callData.receiverId,

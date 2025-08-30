@@ -257,8 +257,11 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       setOutgoingCallData(outgoingCallData);
 
       console.log("🎯 Initiating call with unified calling service...");
-      console.log("🔌 About to pass socket to unified calling service:", socket.id);
-      
+      console.log(
+        "🔌 About to pass socket to unified calling service:",
+        socket.id
+      );
+
       // Pass the socket to the unified calling service
       const success = await unifiedCallingService.initiateCall(
         {
@@ -278,7 +281,9 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           isCallActive: isCallActive,
           callType: type,
         });
-        console.log("🎯 Call flow: Caller side complete, waiting for receiver...");
+        console.log(
+          "🎯 Call flow: Caller side complete, waiting for receiver..."
+        );
       } else {
         console.log("❌ Failed to initiate call");
         setIsCallDialogOpen(false);

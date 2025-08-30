@@ -34,7 +34,13 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
   callData,
   onCallEnded,
 }) => {
-  console.log("🎯 UnifiedCallDialog RENDER:", { isOpen, callType, callerName, isIncoming, callData });
+  console.log("🎯 UnifiedCallDialog RENDER:", {
+    isOpen,
+    callType,
+    callerName,
+    isIncoming,
+    callData,
+  });
 
   const [callDuration, setCallDuration] = useState(0);
   const [isCallActive, setIsCallActive] = useState(false);
@@ -131,7 +137,12 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
   useEffect(() => {
     if (callData && isIncoming) {
       setCurrentPlatform(callData.platform);
-      setIsConnecting(true);
+      // Don't set isConnecting to true for incoming calls
+      // Only set it when the user actually accepts the call
+      console.log(
+        "📞 Incoming call data received, platform set to:",
+        callData.platform
+      );
     }
   }, [callData, isIncoming]);
 
@@ -305,6 +316,31 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
           </div>
         )}
 
+        {/* Debug Information */}
+        <div className="bg-blue-50 rounded-lg p-4 mb-6 text-xs">
+          <h4 className="font-medium text-blue-800 mb-2">🔍 Debug Info</h4>
+          <div className="grid grid-cols-2 gap-2 text-blue-700">
+            <div>
+              <strong>isIncoming:</strong> {isIncoming.toString()}
+            </div>
+            <div>
+              <strong>isConnecting:</strong> {isConnecting.toString()}
+            </div>
+            <div>
+              <strong>isCallActive:</strong> {isCallActive.toString()}
+            </div>
+            <div>
+              <strong>currentPlatform:</strong> {currentPlatform || "null"}
+            </div>
+            <div>
+              <strong>callData:</strong> {callData ? "exists" : "null"}
+            </div>
+            <div>
+              <strong>callType:</strong> {callType}
+            </div>
+          </div>
+        </div>
+
         {/* Video Display (Jitsi) */}
         {currentPlatform === "jitsi" && (
           <div className="mb-6">
@@ -354,17 +390,19 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
                 onClick={handleAccept}
                 disabled={isConnecting}
                 className="bg-green-500 text-white px-8 py-3 rounded-full font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                title={isConnecting ? "Connecting..." : "Accept call"}
               >
                 <IoCall className="inline mr-2" />
-                Accept
+                Accept {isConnecting && "(Connecting...)"}
               </button>
               <button
                 onClick={handleDecline}
                 disabled={isConnecting}
                 className="bg-red-500 text-white px-8 py-3 rounded-full font-medium hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                title={isConnecting ? "Connecting..." : "Decline call"}
               >
                 <IoCallOutline className="inline mr-2" />
-                Decline
+                Decline {isConnecting && "(Connecting...)"}
               </button>
             </>
           ) : (
