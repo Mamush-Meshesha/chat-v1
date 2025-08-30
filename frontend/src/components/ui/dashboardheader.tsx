@@ -147,6 +147,9 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
             setOutgoingCallData({
               ...outgoingCallData,
               status: "active" as const,
+              // Preserve roomName and other important data
+              roomName: outgoingCallData.roomName,
+              platform: outgoingCallData.platform,
             });
             console.log("✅ Outgoing call data updated to active status");
           }
@@ -171,6 +174,9 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           setOutgoingCallData({
             ...outgoingCallData,
             status: "active" as const,
+            // Preserve roomName and other important data
+            roomName: outgoingCallData.roomName,
+            platform: outgoingCallData.platform,
           });
           console.log(
             "✅ Outgoing call data updated to active status via callConnected"

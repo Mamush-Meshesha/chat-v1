@@ -145,16 +145,32 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
         "📞 Incoming call data received, platform set to:",
         callData.platform
       );
+      console.log("🔍 Full callData received:", callData);
+      console.log("🔍 Room name in callData:", callData.roomName);
     }
   }, [callData, isIncoming]);
 
   // Track Jitsi container creation
   useEffect(() => {
-    // if (jitsiContainerRef.current) { // Removed as per edit hint
-    //   console.log("🎯 Jitsi container DOM element created and available"); // Removed as per edit hint
-    //   console.log("🎯 Container element:", jitsiContainerRef.current); // Removed as per edit hint
-    // } // Removed as per edit hint
+    if (jitsiContainerRef.current) {
+      console.log("🎯 Jitsi container DOM element created and available");
+      console.log("🎯 Container element:", jitsiContainerRef.current);
+    }
   }, [isConnecting, isCallActive, isIncoming, callData]);
+
+  // Debug Jitsi component rendering
+  useEffect(() => {
+    if (isCallActive && callData?.roomName) {
+      console.log(
+        "🎯 Should render Jitsi component with roomName:",
+        callData.roomName
+      );
+      console.log("🎯 Call data for Jitsi:", callData);
+    } else if (isCallActive && !callData?.roomName) {
+      console.log("❌ Call is active but roomName is missing!");
+      console.log("❌ Call data:", callData);
+    }
+  }, [isCallActive, callData]);
 
   // Handle call acceptance
   const handleAccept = async () => {

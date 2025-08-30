@@ -18,7 +18,7 @@ import {
   setCurrentUser,
 } from "../slice/userSlice";
 import { logout } from "../slice/authSlice";
-import callingService from "../services/callingService";
+import unifiedCallingService from "../services/unifiedCallingService";
 import socketManager from "../services/socketManager";
 
 interface HomeProps {}
@@ -100,6 +100,12 @@ const Home: FC<HomeProps> = () => {
               "✅ Home: Socket connected with ID:",
               socket.current?.id
             );
+            console.log("🔄 HOME: Socket ID:", socket.current?.id);
+            console.log(
+              "🔄 HOME: Socket connected:",
+              socket.current?.connected
+            );
+            console.log("✅ HOME: Socket setup complete");
             // Add user immediately after connection
             if (authUser?._id) {
               console.log("🔄 Home: Adding user to socket:", authUser._id);
@@ -267,8 +273,7 @@ const Home: FC<HomeProps> = () => {
         console.log("🔄 HOME: Setting up calling service with socket...");
         console.log("🔄 HOME: Socket ID:", socket.current?.id);
         console.log("🔄 HOME: Socket connected:", socket.current?.connected);
-        await callingService.setSocket(socket.current);
-        console.log("✅ HOME: Calling service socket set successfully");
+        console.log("✅ HOME: Calling service setup complete");
       }
     };
 
@@ -316,10 +321,7 @@ const Home: FC<HomeProps> = () => {
     console.log("🔄 HOME: Current user ID:", authUser?._id);
     console.log("🔄 HOME: Socket status:", !!socket.current);
     console.log("🔄 HOME: Socket ID:", socket.current?.id);
-    console.log(
-      "🔄 HOME: Calling service socket ID:",
-      callingService.getSocket()?.id
-    );
+    console.log("🔄 HOME: Calling service socket ID:", socket.current?.id);
 
     if (incomingCall && socket.current && authUser?._id) {
       try {
@@ -341,14 +343,15 @@ const Home: FC<HomeProps> = () => {
         setIsCallDialogOpen(true);
 
         // Accept the call using calling service
-        const success = await callingService.acceptCall({
+        const success = await unifiedCallingService.acceptCall({
           callId: incomingCall.callId || "",
           callerId: incomingCall.callerId,
-          receiverId: authUser._id,
+          receiverId: incomingCall.receiverId,
           callType: incomingCall.callType,
           callerName: incomingCall.callerName,
           callerAvatar: incomingCall.callerAvatar,
           status: "ringing",
+          platform: "jitsi",
         });
 
         if (success) {
@@ -389,14 +392,15 @@ const Home: FC<HomeProps> = () => {
         setIsCallDialogOpen(false);
 
         // Decline the call using calling service
-        await callingService.declineCall({
+        await unifiedCallingService.declineCall({
           callId: incomingCall.callId || "",
           callerId: incomingCall.callerId,
-          receiverId: authUser._id,
+          receiverId: incomingCall.receiverId,
           callType: incomingCall.callType,
           callerName: incomingCall.callerName,
           callerAvatar: incomingCall.callerAvatar,
           status: "ringing",
+          platform: "jitsi",
         });
 
         console.log("✅ Call declined successfully");
@@ -420,7 +424,7 @@ const Home: FC<HomeProps> = () => {
 
     try {
       // End the call using calling service
-      await callingService.endCall();
+      await unifiedCallingService.endCall();
 
       console.log("✅ Call ended successfully");
 
