@@ -163,7 +163,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
               displayName,
               callData.callType === "audio"
             );
-            
+
             console.log("✅ Jitsi meeting joined successfully");
             // Update state to show call is active
             setIsConnecting(false);

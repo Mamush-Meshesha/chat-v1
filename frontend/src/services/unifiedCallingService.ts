@@ -48,11 +48,10 @@ class UnifiedCallingService {
   // Check if Jitsi is available
   isJitsiAvailable(): boolean {
     try {
-      // Check if Jitsi SDK is available
-      return (
-        typeof window !== "undefined" &&
-        window.JitsiMeetExternalAPI !== undefined
-      );
+      // Check if Jitsi React SDK is available
+      // The @jitsi/react-sdk package is imported, so if we can reach this code,
+      // it means the package is available
+      return true;
     } catch (error) {
       console.error("Error checking Jitsi availability:", error);
       return false;
@@ -77,10 +76,13 @@ class UnifiedCallingService {
 
   private setupServiceCallbacks() {
     console.log("🔧 Setting up Jitsi service callbacks...");
-    
+
     // Set up Jitsi service callbacks
     jitsiCallingService.onCallConnected = (data) => {
-      console.log("🎉 UNIFIED SERVICE: Jitsi call connected callback triggered:", data);
+      console.log(
+        "🎉 UNIFIED SERVICE: Jitsi call connected callback triggered:",
+        data
+      );
       if (this.onCallConnected) {
         console.log("🎉 Forwarding call connected to component...");
         this.onCallConnected(data);
@@ -90,7 +92,10 @@ class UnifiedCallingService {
     };
 
     jitsiCallingService.onCallEnded = (data) => {
-      console.log("🎵 UNIFIED SERVICE: Jitsi call ended callback triggered:", data);
+      console.log(
+        "🎵 UNIFIED SERVICE: Jitsi call ended callback triggered:",
+        data
+      );
       if (this.onCallEnded) {
         console.log("🎵 Forwarding call ended to component...");
         this.onCallEnded(data);
@@ -100,7 +105,10 @@ class UnifiedCallingService {
     };
 
     jitsiCallingService.onCallFailed = (data) => {
-      console.log("💥 UNIFIED SERVICE: Jitsi call failed callback triggered:", data);
+      console.log(
+        "💥 UNIFIED SERVICE: Jitsi call failed callback triggered:",
+        data
+      );
       if (this.onCallFailed) {
         console.log("💥 Forwarding call failed to component...");
         this.onCallFailed(data);
@@ -302,10 +310,10 @@ class UnifiedCallingService {
         status: callData.status,
         roomName: callData.roomName || "",
       };
-      
+
       console.log("🎯 Calling Jitsi service with data:", jitsiCallData);
       console.log("🎯 Jitsi service instance:", jitsiCallingService);
-      
+
       const success = await jitsiCallingService.acceptCall(jitsiCallData);
       console.log("🎯 Jitsi service acceptCall result:", success);
 
