@@ -92,14 +92,17 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           callType: data.callType,
           callerName: data.callerName,
           platform: data.platform,
+          roomName: data.roomName, // Add roomName to debugging
         });
+        console.log("🔍 Full socket data received:", data);
+        console.log("🔍 Room name from socket:", data.roomName);
 
         // Set incoming call state
         setIsIncomingCall(true);
         setCallType(data.callType);
 
         // Set incoming call data
-        setOutgoingCallData({
+        const incomingCallData = {
           callId: data.callId,
           callerId: data.callerId,
           receiverId: data.receiverId,
@@ -109,7 +112,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           platform: data.platform || "jitsi",
           status: "ringing",
           roomName: data.roomName, // Add roomName from socket event
-        });
+        };
+
+        console.log("🔍 Setting outgoingCallData to:", incomingCallData);
+        setOutgoingCallData(incomingCallData);
 
         // Open call dialog
         setIsCallDialogOpen(true);
@@ -319,10 +325,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         callerAvatar: "/profile.jpg",
         status: "ringing" as const,
         platform: "jitsi" as const,
+        roomName: `chat-${currentUserChat._id}-${currentUserId}-${Date.now()}`, // Generate roomName for outgoing calls
       };
 
       console.log("✅ Outgoing call data created:", outgoingCallData);
-      setOutgoingCallData(outgoingCallData);
 
       console.log("🎯 Initiating call with unified calling service...");
       console.log(
