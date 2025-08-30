@@ -265,12 +265,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       )}
 
       {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="text-xs text-gray-500 mt-2">
-          Debug: isCallDialogOpen={isCallDialogOpen.toString()}, 
-          outgoingCallData={outgoingCallData ? 'exists' : 'null'}
-        </div>
-      )}
+      <div className="text-xs text-gray-500 mt-2">
+        Debug: isCallDialogOpen={isCallDialogOpen.toString()},
+        outgoingCallData={outgoingCallData ? "exists" : "null"}
+      </div>
     </div>
   );
 };
