@@ -35,6 +35,7 @@ io.on("connection", (socket) => {
   // Add user to socket
   socket.on("addUser", (userId, user) => {
     console.log("🔄 Adding user:", userId, "Socket:", socket.id);
+    console.log("👤 User data:", user);
 
     // Check if user already exists
     const existingUserIndex = activeUsers.findIndex((u) => u.userId === userId);
@@ -53,7 +54,8 @@ io.on("connection", (socket) => {
       console.log("✅ Existing user socket ID updated");
     }
 
-    console.log("📊 Active users:", activeUsers.length);
+    console.log("📊 Active users count:", activeUsers.length);
+    console.log("📋 Active users:", activeUsers.map(u => ({ userId: u.userId, socketId: u.socketId })));
 
     // Emit updated users list to all clients
     io.emit("getUsers", activeUsers);
@@ -98,11 +100,18 @@ io.on("connection", (socket) => {
   // Handle unified call initiation (supports both Jitsi and WebRTC)
   socket.on("initiateCall", (data) => {
     console.log("📞 Call initiated:", data);
+    console.log("🔍 Looking for receiver:", data.receiverId);
+    console.log("📊 Active users:", activeUsers);
+    
     const receiver = getUser(data.receiverId);
 
     if (receiver) {
+      console.log("✅ Receiver found:", receiver);
+      console.log("🔌 Receiver socket ID:", receiver.socketId);
+      
       // Check if user is already in a call
       if (getActiveCall(data.receiverId)) {
+        console.log("❌ Receiver is busy in another call");
         socket.emit("callFailed", {
           reason: "User is busy in another call",
           receiverId: data.receiverId,
@@ -132,6 +141,9 @@ io.on("connection", (socket) => {
       activeCalls.set(data.callerId, callData);
       activeCalls.set(data.receiverId, callData);
 
+      console.log("💾 Call data stored:", callData);
+      console.log("📤 Emitting incomingCall to receiver socket:", receiver.socketId);
+
       // Emit incoming call to receiver
       io.to(receiver.socketId).emit("incomingCall", callData);
 
@@ -139,6 +151,8 @@ io.on("connection", (socket) => {
       console.log("✅ Call platform:", callData.platform);
       console.log("✅ Room name:", callData.roomName);
     } else {
+      console.log("❌ Receiver not found in active users");
+      console.log("❌ Available user IDs:", activeUsers.map(u => u.userId));
       socket.emit("callFailed", {
         reason: "Receiver not found",
         receiverId: data.receiverId,
