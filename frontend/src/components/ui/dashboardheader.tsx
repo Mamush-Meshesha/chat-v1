@@ -145,6 +145,8 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         console.log("🔊 Ringing sound started");
       });
 
+      console.log("✅ incomingCall event listener registered successfully");
+
       // Listen for call accepted
       activeSocket.on("callAccepted", (data: any) => {
         console.log("✅ Call accepted:", data);
