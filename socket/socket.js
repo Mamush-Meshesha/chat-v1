@@ -23,6 +23,12 @@ const getActiveCall = (userId) => {
   return activeCalls.get(userId);
 };
 
+// Generate unique room name for Jitsi
+const generateRoomName = (callerId, receiverId) => {
+  const sortedIds = [callerId, receiverId].sort();
+  return `chat-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
+};
+
 io.on("connection", (socket) => {
   console.log("✅ Socket connected:", socket.id);
 
@@ -89,7 +95,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle call initiation
+  // Handle unified call initiation (supports both Jitsi and WebRTC)
   socket.on("initiateCall", (data) => {
     console.log("📞 Call initiated:", data);
     const receiver = getUser(data.receiverId);
@@ -104,6 +110,10 @@ io.on("connection", (socket) => {
         return;
       }
 
+      // Generate room name if not provided (for Jitsi)
+      const roomName =
+        data.roomName || generateRoomName(data.callerId, data.receiverId);
+
       // Store call data
       const callData = {
         callId:
@@ -113,19 +123,21 @@ io.on("connection", (socket) => {
         callType: data.callType,
         status: "ringing",
         startTime: Date.now(),
+        roomName: roomName,
+        platform: data.platform || "jitsi", // Default to Jitsi
+        callerName: data.callerName || "Caller",
+        callerAvatar: data.callerAvatar || "/profile.jpg",
       };
 
       activeCalls.set(data.callerId, callData);
       activeCalls.set(data.receiverId, callData);
 
       // Emit incoming call to receiver
-      io.to(receiver.socketId).emit("incomingCall", {
-        ...callData,
-        callerName: data.callerName || "Caller",
-        callerAvatar: data.callerAvatar || "/profile.jpg",
-      });
+      io.to(receiver.socketId).emit("incomingCall", callData);
 
       console.log("✅ Incoming call sent to:", data.receiverId);
+      console.log("✅ Call platform:", callData.platform);
+      console.log("✅ Room name:", callData.roomName);
     } else {
       socket.emit("callFailed", {
         reason: "Receiver not found",
@@ -134,85 +146,46 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle call acceptance
+  // Handle call acceptance (supports both platforms)
   socket.on("acceptCall", (data) => {
-    console.log("📞 ACCEPT CALL RECEIVED:", data);
-    console.log("📞 Socket ID:", socket.id);
-    console.log("📞 Active users:", activeUsers.length);
-    console.log(
-      "📞 Active users details:",
-      activeUsers.map((u) => ({ userId: u.userId, socketId: u.socketId }))
-    );
-
+    console.log("📞 Call accepted:", data);
     const caller = getUser(data.callerId);
     const receiver = getUser(data.receiverId);
-
-    console.log("📞 Caller found:", caller ? "YES" : "NO", caller?.userId);
-    console.log(
-      "📞 Receiver found:",
-      receiver ? "YES" : "NO",
-      receiver?.userId
-    );
 
     if (caller && receiver) {
       let callData =
         getActiveCall(data.callerId) || getActiveCall(data.receiverId);
-
-      console.log("📞 Call data found:", callData ? "YES" : "NO");
 
       if (callData) {
         callData.status = "active";
         callData.answerTime = Date.now();
 
         console.log("✅ Call status updated to active");
+        console.log("✅ Call platform:", callData.platform);
 
-        // Notify caller that call was accepted - this should trigger them to send the WebRTC offer
-        console.log("📡 Emitting callAccepted to caller:", {
-          callerSocketId: caller.socketId,
-          callerUserId: caller.userId,
-          event: "callAccepted",
-        });
-
-        // CRITICAL: Use specific socket emission, NOT broadcasting
+        // Notify caller that call was accepted
         const callerSocket = io.sockets.sockets.get(caller.socketId);
         if (callerSocket) {
           callerSocket.emit("callAccepted", {
             ...data,
             receiverSocketId: receiver.socketId,
             callId: callData.callId,
+            roomName: callData.roomName,
+            platform: callData.platform,
           });
-          console.log("✅ callAccepted sent to specific caller socket");
-        } else {
-          console.log(
-            "❌ ERROR: Caller socket not found for ID:",
-            caller.socketId
-          );
+          console.log("✅ callAccepted sent to caller");
         }
 
-        // Notify receiver that call is now active - they should wait for the WebRTC offer
-        console.log("📡 Emitting callConnected to receiver:", {
-          receiverSocketId: receiver.socketId,
-          receiverUserId: receiver.userId,
-          event: "callConnected",
-        });
-
-        // CRITICAL: Use specific socket emission, NOT broadcasting
+        // Notify receiver that call is now active
         const receiverSocket = io.sockets.sockets.get(receiver.socketId);
         if (receiverSocket) {
           receiverSocket.emit("callConnected", {
             ...callData,
             callerSocketId: caller.socketId,
+            platform: callData.platform,
           });
-          console.log("✅ callConnected sent to specific receiver socket");
-        } else {
-          console.log(
-            "❌ ERROR: Receiver socket not found for ID:",
-            receiver.socketId
-          );
+          console.log("✅ callConnected sent to receiver");
         }
-
-        console.log("✅ Call accepted and connected successfully");
-        console.log("🔄 Caller should now send WebRTC offer to receiver");
 
         console.log("✅ Call accepted and connected successfully");
       } else {
@@ -226,6 +199,9 @@ io.on("connection", (socket) => {
           status: "active",
           startTime: Date.now(),
           answerTime: Date.now(),
+          roomName:
+            data.roomName || generateRoomName(data.callerId, data.receiverId),
+          platform: data.platform || "jitsi",
         };
 
         activeCalls.set(data.callerId, newCallData);
@@ -240,15 +216,9 @@ io.on("connection", (socket) => {
             ...data,
             receiverSocketId: receiver.socketId,
             callId: newCallData.callId,
+            roomName: newCallData.roomName,
+            platform: newCallData.platform,
           });
-          console.log(
-            "✅ callAccepted sent to specific caller socket (new call)"
-          );
-        } else {
-          console.log(
-            "❌ ERROR: Caller socket not found for ID (new call):",
-            caller.socketId
-          );
         }
 
         const receiverSocket = io.sockets.sockets.get(receiver.socketId);
@@ -256,67 +226,18 @@ io.on("connection", (socket) => {
           receiverSocket.emit("callConnected", {
             ...newCallData,
             callerSocketId: caller.socketId,
+            platform: newCallData.platform,
           });
-          console.log(
-            "✅ callConnected sent to specific receiver socket (new call)"
-          );
-        } else {
-          console.log(
-            "❌ ERROR: Receiver socket not found for ID (new call):",
-            receiver.socketId
-          );
         }
       }
     } else {
       if (!caller) {
         console.log("❌ Caller not found:", data.callerId);
-        console.log(
-          "❌ Available users:",
-          activeUsers.map((u) => u.userId)
-        );
       }
       if (!receiver) {
         console.log("❌ Receiver not found:", data.receiverId);
-        console.log(
-          "❌ Available users:",
-          activeUsers.map((u) => u.userId)
-        );
       }
       console.log("❌ Cannot accept call - users not found in active users");
-    }
-  });
-
-  // Handle call type change (e.g., video -> audio fallback)
-  socket.on("callTypeChanged", (data) => {
-    console.log("🔄 SOCKET SERVER: Received callTypeChanged event");
-    console.log("🔄 Event data:", data);
-    console.log("🔄 Socket ID:", socket.id);
-    console.log("🔄 Looking for caller with ID:", data.callerId);
-    console.log(
-      "🔄 Available users:",
-      activeUsers.map((u) => ({ userId: u.userId, socketId: u.socketId }))
-    );
-
-    // Find the caller to notify them about the call type change
-    const caller = getUser(data.callerId);
-
-    if (caller) {
-      // Forward the call type change to the caller
-      io.to(caller.socketId).emit("callTypeChanged", {
-        callId: data.callId,
-        newCallType: data.newCallType,
-        reason: data.reason,
-      });
-      console.log(
-        `🔄 Call type change forwarded to caller: ${data.newCallType}`
-      );
-      console.log(`🔄 Caller socket ID: ${caller.socketId}`);
-    } else {
-      console.log("❌ Caller not found for call type change:", data.callerId);
-      console.log(
-        "❌ Available user IDs:",
-        activeUsers.map((u) => u.userId)
-      );
     }
   });
 
@@ -360,70 +281,126 @@ io.on("connection", (socket) => {
             enderSocketId: socket.id,
             enderId: currentUserId,
             reason: "Call ended by other party",
+            platform: data.platform,
           });
         }
       }
     }
   });
 
-  // Handle WebRTC signaling
+  // Handle Jitsi meeting join notification
+  socket.on("joinMeeting", (data) => {
+    console.log("🔄 User joining Jitsi meeting:", data);
+    const { roomName, userId, displayName } = data;
+
+    // Notify other participants in the same room
+    const callData = getActiveCall(userId);
+    if (callData) {
+      const otherUserId =
+        callData.callerId === userId ? callData.receiverId : callData.callerId;
+      const otherUser = getUser(otherUserId);
+
+      if (otherUser) {
+        io.to(otherUser.socketId).emit("participantJoined", {
+          roomName,
+          userId,
+          displayName,
+          platform: "jitsi",
+        });
+      }
+    }
+  });
+
+  // Handle Jitsi meeting leave notification
+  socket.on("leaveMeeting", (data) => {
+    console.log("🔄 User leaving Jitsi meeting:", data);
+    const { roomName, userId } = data;
+
+    // Notify other participants
+    const callData = getActiveCall(userId);
+    if (callData) {
+      const otherUserId =
+        callData.callerId === userId ? callData.receiverId : callData.callerId;
+      const otherUser = getUser(otherUserId);
+
+      if (otherUser) {
+        io.to(otherUser.socketId).emit("participantLeft", {
+          roomName,
+          userId,
+          platform: "jitsi",
+        });
+      }
+    }
+  });
+
+  // Handle platform switching
+  socket.on("switchPlatform", (data) => {
+    console.log("🔄 Platform switch requested:", data);
+    const { callId, newPlatform, userId } = data;
+
+    // Find the call
+    const callData = getActiveCall(userId);
+    if (callData && callData.callId === callId) {
+      // Update platform
+      callData.platform = newPlatform;
+
+      // Notify both parties about platform change
+      const caller = getUser(callData.callerId);
+      const receiver = getUser(callData.receiverId);
+
+      if (caller) {
+        io.to(caller.socketId).emit("platformChanged", {
+          callId,
+          newPlatform,
+          reason: "Platform switched by user",
+        });
+      }
+
+      if (receiver) {
+        io.to(receiver.socketId).emit("platformChanged", {
+          callId,
+          newPlatform,
+          reason: "Platform switched by user",
+        });
+      }
+
+      console.log(`✅ Platform switched to ${newPlatform} for call ${callId}`);
+    }
+  });
+
+  // Handle WebRTC signaling (for fallback)
   socket.on("offer", (data) => {
-    console.log("🎯 SOCKET SERVER: Received offer:", {
-      receiverId: data.receiverId,
-      hasOffer: !!data.offer,
-      offerType: data.offer?.type,
-    });
-
+    console.log("🎯 WebRTC offer received:", data);
     const receiver = getUser(data.receiverId);
+
     if (receiver) {
-      const sender = activeUsers.find((u) => u.socketId === socket.id);
-      const senderId = sender ? sender.userId : null;
-
-      console.log("🎯 SOCKET SERVER: Forwarding offer to receiver:", {
-        receiverSocketId: receiver.socketId,
-        senderId: senderId,
-      });
-
       io.to(receiver.socketId).emit("offer", {
         ...data,
-        senderId: senderId,
+        senderSocketId: socket.id,
       });
-
-      console.log("✅ SOCKET SERVER: Offer forwarded successfully");
-    } else {
-      console.log(
-        "❌ SOCKET SERVER: Receiver not found for offer:",
-        data.receiverId
-      );
-      console.log(
-        "❌ SOCKET SERVER: Available users:",
-        activeUsers.map((u) => ({ userId: u.userId, socketId: u.socketId }))
-      );
     }
   });
 
   socket.on("answer", (data) => {
+    console.log("🎯 WebRTC answer received:", data);
     const receiver = getUser(data.receiverId);
-    if (receiver) {
-      const sender = activeUsers.find((u) => u.socketId === socket.id);
-      const senderId = sender ? sender.userId : null;
 
+    if (receiver) {
       io.to(receiver.socketId).emit("answer", {
         ...data,
-        senderId: senderId,
+        senderSocketId: socket.id,
       });
     }
   });
 
   socket.on("iceCandidate", (data) => {
+    console.log("🧊 ICE candidate received:", data);
     const receiver = getUser(data.receiverId);
-    if (receiver) {
-      const sender = activeUsers.find((u) => u.socketId === socket.id);
-      const senderId = sender ? sender.userId : null;
 
+    if (receiver) {
       io.to(receiver.socketId).emit("iceCandidate", {
         ...data,
-        senderId: senderId,
+        senderSocketId: socket.id,
       });
     }
   });
@@ -450,6 +427,7 @@ io.on("connection", (socket) => {
             otherUserId: userId,
             enderId: userId,
             callType: callData.callType,
+            platform: callData.platform,
           });
         }
 
@@ -465,4 +443,45 @@ io.on("connection", (socket) => {
 
     console.log("📊 Active users after disconnect:", activeUsers.length);
   });
+
+  // Handle call type change (e.g., video -> audio fallback)
+  socket.on("callTypeChanged", (data) => {
+    console.log("🔄 Call type changed:", data);
+    const { callId, newCallType, reason } = data;
+
+    // Find the call and update it
+    for (const [userId, callData] of activeCalls.entries()) {
+      if (callData.callId === callId) {
+        callData.callType = newCallType;
+
+        // Notify both parties
+        const caller = getUser(callData.callerId);
+        const receiver = getUser(callData.receiverId);
+
+        if (caller) {
+          io.to(caller.socketId).emit("callTypeChanged", {
+            callId,
+            newCallType,
+            reason,
+          });
+        }
+
+        if (receiver) {
+          io.to(receiver.socketId).emit("callTypeChanged", {
+            callId,
+            newCallType,
+            reason,
+          });
+        }
+
+        console.log(
+          `✅ Call type updated to ${newCallType} for call ${callId}`
+        );
+        break;
+      }
+    }
+  });
 });
+
+// Export for potential use in other modules
+module.exports = io;
