@@ -1,5 +1,4 @@
 import jitsiCallingService from "./jitsiCallingService";
-import callingService from "./callingService";
 import { getApiUrl } from "../config/config";
 import axios from "axios";
 
@@ -12,7 +11,7 @@ export interface UnifiedCallData {
   callerAvatar?: string;
   status: "ringing" | "active" | "ended";
   roomName?: string;
-  platform: "jitsi" | "webrtc";
+  platform: "jitsi";
 }
 
 export interface UnifiedCall {
@@ -20,13 +19,12 @@ export interface UnifiedCall {
   remoteStream: MediaStream | null;
   callData: UnifiedCallData;
   jitsiApi?: any;
-  peerConnection?: RTCPeerConnection | null;
+  callStartTime?: number;
 }
 
 class UnifiedCallingService {
   private activeCall: UnifiedCall | null = null;
-  private preferredPlatform: "jitsi" | "webrtc" = "jitsi";
-  private fallbackToWebRTC: boolean = true;
+  private preferredPlatform: "jitsi" = "jitsi";
 
   // Callback functions that components can set
   onCallConnected?: (data: any) => void;
@@ -34,101 +32,78 @@ class UnifiedCallingService {
   onCallFailed?: (data: any) => void;
   onRemoteStream?: (stream: MediaStream) => void;
   onIncomingCall?: (data: any) => void;
-  onPlatformChanged?: (platform: "jitsi" | "webrtc") => void;
+  onPlatformChanged?: (platform: "jitsi") => void;
 
   constructor() {
-    console.log("🚀 UnifiedCallingService initialized");
+    console.log("🚀 UnifiedCallingService initialized (Jitsi-only)");
     this.setupServiceCallbacks();
   }
 
-  // Set preferred platform
-  setPreferredPlatform(platform: "jitsi" | "webrtc") {
+  // Set preferred platform (always Jitsi)
+  setPreferredPlatform(platform: "jitsi") {
     this.preferredPlatform = platform;
     console.log(`🎯 Preferred platform set to: ${platform}`);
   }
 
-  // Enable/disable WebRTC fallback
-  setFallbackToWebRTC(enabled: boolean) {
-    this.fallbackToWebRTC = enabled;
-    console.log(`🔄 WebRTC fallback ${enabled ? "enabled" : "disabled"}`);
-  }
-
   // Check if Jitsi is available
   isJitsiAvailable(): boolean {
-    return jitsiCallingService.isJitsiAvailable();
+    try {
+      // Check if Jitsi SDK is available
+      return (
+        typeof window !== "undefined" &&
+        window.JitsiMeetExternalAPI !== undefined
+      );
+    } catch (error) {
+      console.error("Error checking Jitsi availability:", error);
+      return false;
+    }
   }
 
-  // Check if WebRTC is available
-  isWebRTCAvailable(): boolean {
-    return typeof RTCPeerConnection !== "undefined";
+  // Get recommended platform (always Jitsi)
+  getRecommendedPlatform(): "jitsi" {
+    return "jitsi";
   }
 
-  // Get recommended platform
-  getRecommendedPlatform(): "jitsi" | "webrtc" {
-    if (this.preferredPlatform === "jitsi" && this.isJitsiAvailable()) {
-      return "jitsi";
-    }
-    if (this.preferredPlatform === "webrtc" && this.isWebRTCAvailable()) {
-      return "webrtc";
-    }
-    if (this.isJitsiAvailable()) {
-      return "jitsi";
-    }
-    if (this.isWebRTCAvailable()) {
-      return "webrtc";
-    }
-    return "webrtc"; // Default fallback
+  // Get platform statistics
+  getPlatformStats() {
+    return {
+      jitsiAvailable: this.isJitsiAvailable(),
+      webrtcAvailable: false, // WebRTC is disabled
+      recommended: "jitsi",
+      preferred: this.preferredPlatform,
+      fallbackEnabled: false, // Fallback is disabled
+    };
   }
 
-  // Setup callbacks for both services
   private setupServiceCallbacks() {
-    // Jitsi service callbacks
+    // Set up Jitsi service callbacks
     jitsiCallingService.onCallConnected = (data) => {
       if (this.onCallConnected) {
-        this.onCallConnected({ ...data, platform: "jitsi" });
+        this.onCallConnected(data);
       }
     };
 
     jitsiCallingService.onCallEnded = (data) => {
       if (this.onCallEnded) {
-        this.onCallEnded({ ...data, platform: "jitsi" });
+        this.onCallEnded(data);
       }
     };
 
     jitsiCallingService.onCallFailed = (data) => {
       if (this.onCallFailed) {
-        this.onCallFailed({ ...data, platform: "jitsi" });
+        this.onCallFailed(data);
+      }
+    };
+
+    jitsiCallingService.onRemoteStream = (stream) => {
+      if (this.onRemoteStream) {
+        this.onRemoteStream(stream);
       }
     };
 
     jitsiCallingService.onIncomingCall = (data) => {
       if (this.onIncomingCall) {
-        this.onIncomingCall({ ...data, platform: "jitsi" });
-      }
-    };
-
-    // WebRTC service callbacks
-    callingService.onCallConnected = (data) => {
-      if (this.onCallConnected) {
-        this.onCallConnected({ ...data, platform: "webrtc" });
-      }
-    };
-
-    callingService.onCallEnded = (data) => {
-      if (this.onCallEnded) {
-        this.onCallEnded({ ...data, platform: "webrtc" });
-      }
-    };
-
-    callingService.onCallFailed = (data) => {
-      if (this.onCallFailed) {
-        this.onCallFailed({ ...data, platform: "webrtc" });
-      }
-    };
-
-    callingService.onRemoteStream = (stream) => {
-      if (this.onRemoteStream) {
-        this.onRemoteStream(stream);
+        this.onIncomingCall(data);
       }
     };
   }
@@ -138,24 +113,22 @@ class UnifiedCallingService {
     receiverId: string;
     type: "outgoing" | "incoming";
     callType: "audio" | "video";
-    platform: "jitsi" | "webrtc";
+    platform: "jitsi";
   }): Promise<string | null> {
     try {
       const authUser = localStorage.getItem("authUser");
       const token = authUser ? JSON.parse(authUser).token : null;
 
       if (!token) {
-        console.error("No authentication token found for call creation");
+        console.error("No auth token found");
         return null;
       }
 
       const response = await axios.post(
         getApiUrl("/api/calls"),
         {
-          receiverId: callData.receiverId,
-          type: callData.type,
-          callType: callData.callType,
-          platform: callData.platform,
+          ...callData,
+          startTime: new Date().toISOString(),
         },
         {
           headers: {
@@ -164,20 +137,17 @@ class UnifiedCallingService {
         }
       );
 
-      if (response.data.success || response.data._id) {
-        console.log("Call record created:", response.data);
-        return response.data._id || response.data.call?._id;
-      } else {
-        console.error("Failed to create call record:", response.data);
-        return null;
+      if (response.data.success) {
+        return response.data.call._id;
       }
+      return null;
     } catch (error) {
       console.error("Error creating call record:", error);
       return null;
     }
   }
 
-  // Update call record status
+  // Update call record in backend
   private async updateCallRecord(
     callId: string,
     status: "completed" | "missed" | "rejected",
@@ -188,7 +158,7 @@ class UnifiedCallingService {
       const token = authUser ? JSON.parse(authUser).token : null;
 
       if (!token) {
-        console.error("No authentication token found for call update");
+        console.error("No auth token found");
         return;
       }
 
@@ -196,6 +166,7 @@ class UnifiedCallingService {
         getApiUrl(`/api/calls/${callId}`),
         {
           status,
+          endTime: new Date().toISOString(),
           duration,
         },
         {
@@ -204,22 +175,18 @@ class UnifiedCallingService {
           },
         }
       );
-
-      console.log("Call record updated:", { callId, status, duration });
     } catch (error) {
       console.error("Error updating call record:", error);
     }
   }
 
-  // Generate a unique room name for Jitsi
+  // Generate room name for Jitsi
   private generateRoomName(callerId: string, receiverId: string): string {
     const sortedIds = [callerId, receiverId].sort();
-    return `chat-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
+    return `meet-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
   }
 
-  // Get current user ID from localStorage
-
-  // Initialize call with automatic platform selection
+  // Initialize call with Jitsi only
   async initiateCall(
     callData: Omit<
       UnifiedCallData,
@@ -227,19 +194,28 @@ class UnifiedCallingService {
     >
   ): Promise<boolean> {
     try {
-      console.log("=== UNIFIED CALLING SERVICE: initiateCall ===");
+      console.log(
+        "🚀 UNIFIED CALLING SERVICE: initiateCall called (Jitsi-only)"
+      );
       console.log("Call data received:", callData);
 
-      // Determine platform to use
-      const platform = this.getRecommendedPlatform();
-      console.log(`🎯 Using platform: ${platform}`);
+      // Check if Jitsi is available
+      if (!this.isJitsiAvailable()) {
+        throw new Error("Jitsi is not available in this browser");
+      }
+
+      // Generate room name
+      const roomName = this.generateRoomName(
+        callData.callerId,
+        callData.receiverId
+      );
 
       // Create call record in backend
       const callRecordId = await this.createCallRecord({
         receiverId: callData.receiverId,
         type: "outgoing",
         callType: callData.callType,
-        platform,
+        platform: "jitsi",
       });
 
       if (!callRecordId) {
@@ -248,11 +224,6 @@ class UnifiedCallingService {
 
       // Set active call
       const callId = callRecordId;
-      const roomName =
-        platform === "jitsi"
-          ? this.generateRoomName(callData.callerId, callData.receiverId)
-          : undefined;
-
       this.activeCall = {
         localStream: null,
         remoteStream: null,
@@ -261,53 +232,22 @@ class UnifiedCallingService {
           callId,
           roomName,
           status: "ringing",
-          platform,
+          platform: "jitsi",
         },
         jitsiApi: undefined,
-        peerConnection: undefined,
+        callStartTime: Date.now(),
       };
 
-      console.log("✅ Active call set:", this.activeCall);
-
-      // Initiate call using the selected platform
-      let success = false;
-      if (platform === "jitsi") {
-        success = await jitsiCallingService.initiateCall({
-          ...callData,
-        });
-      } else {
-        success = await callingService.initiateCall({
-          ...callData,
-        });
-      }
+      // Initiate call using Jitsi
+      const success = await jitsiCallingService.initiateCall({
+        ...callData,
+      });
 
       if (success) {
-        console.log(`✅ Call initiated successfully using ${platform}`);
+        console.log("✅ Call initiated successfully using Jitsi");
         return true;
       } else {
-        // Try fallback if enabled
-        if (
-          this.fallbackToWebRTC &&
-          platform === "jitsi" &&
-          this.isWebRTCAvailable()
-        ) {
-          console.log("🔄 Jitsi failed, trying WebRTC fallback...");
-          this.activeCall.callData.platform = "webrtc";
-
-          success = await callingService.initiateCall({
-            ...callData,
-          });
-
-          if (success) {
-            console.log("✅ WebRTC fallback successful");
-            if (this.onPlatformChanged) {
-              this.onPlatformChanged("webrtc");
-            }
-            return true;
-          }
-        }
-
-        throw new Error(`Failed to initiate call using ${platform}`);
+        throw new Error("Failed to initiate call using Jitsi");
       }
     } catch (error) {
       console.error("❌ Error in initiateCall:", error);
@@ -316,11 +256,11 @@ class UnifiedCallingService {
     }
   }
 
-  // Accept call with automatic platform handling
+  // Accept call with Jitsi only
   async acceptCall(callData: UnifiedCallData): Promise<boolean> {
     try {
-      console.log("🔄 UNIFIED CALLING SERVICE: acceptCall called");
-      console.log("🔄 Call data received:", callData);
+      console.log("🔄 UNIFIED CALLING SERVICE: acceptCall called (Jitsi-only)");
+      console.log("Call data received:", callData);
 
       // Set active call
       this.activeCall = {
@@ -328,33 +268,28 @@ class UnifiedCallingService {
         remoteStream: null,
         callData,
         jitsiApi: undefined,
-        peerConnection: undefined,
+        callStartTime: Date.now(),
       };
 
-      // Accept call using the appropriate platform
-      let success = false;
-      if (callData.platform === "jitsi") {
-        // Convert UnifiedCallData to JitsiCallData format
-        const jitsiCallData = {
-          callId: callData.callId,
-          callerId: callData.callerId,
-          receiverId: callData.receiverId,
-          callType: callData.callType,
-          callerName: callData.callerName,
-          callerAvatar: callData.callerAvatar,
-          status: callData.status,
-          roomName: callData.roomName || "",
-        };
-        success = await jitsiCallingService.acceptCall(jitsiCallData);
-      } else {
-        success = await callingService.acceptCall(callData);
-      }
+      // Accept call using Jitsi
+      const jitsiCallData = {
+        callId: callData.callId,
+        callerId: callData.callerId,
+        receiverId: callData.receiverId,
+        callType: callData.callType,
+        callerName: callData.callerName,
+        callerAvatar: callData.callerAvatar,
+        status: callData.status,
+        roomName: callData.roomName || "",
+      };
+
+      const success = await jitsiCallingService.acceptCall(jitsiCallData);
 
       if (success) {
-        console.log(`✅ Call accepted successfully using ${callData.platform}`);
+        console.log("✅ Call accepted successfully using Jitsi");
         return true;
       } else {
-        throw new Error(`Failed to accept call using ${callData.platform}`);
+        throw new Error("Failed to accept call using Jitsi");
       }
     } catch (error) {
       console.error("Failed to accept call:", error);
@@ -363,7 +298,7 @@ class UnifiedCallingService {
     }
   }
 
-  // Join meeting (Jitsi) or establish connection (WebRTC)
+  // Join meeting (Jitsi only)
   async joinMeeting(
     roomName: string,
     displayName: string,
@@ -374,22 +309,14 @@ class UnifiedCallingService {
         throw new Error("No active call");
       }
 
-      const platform = this.activeCall.callData.platform;
-      console.log(`🔄 Joining meeting using ${platform}`);
-
-      if (platform === "jitsi") {
-        return await jitsiCallingService.joinMeeting(
-          roomName,
-          displayName,
-          isAudioOnly
-        );
-      } else {
-        // For WebRTC, the connection is already established in acceptCall
-        console.log("✅ WebRTC connection already established");
-        return null;
-      }
+      console.log("🔄 Joining Jitsi meeting");
+      return await jitsiCallingService.joinMeeting(
+        roomName,
+        displayName,
+        isAudioOnly
+      );
     } catch (error) {
-      console.error("❌ Error joining meeting:", error);
+      console.error("Error joining meeting:", error);
       throw error;
     }
   }
@@ -402,117 +329,99 @@ class UnifiedCallingService {
         return;
       }
 
-      const platform = this.activeCall.callData.platform;
-      console.log(`🔚 Ending call using ${platform}`);
+      console.log("🔚 Ending call...");
 
-      if (platform === "jitsi") {
+      // End call using Jitsi
+      if (this.activeCall.callData.platform === "jitsi") {
         await jitsiCallingService.endCall();
-      } else {
-        await callingService.endCall();
       }
 
       // Update call record in backend
       if (this.activeCall.callData.callId) {
+        const duration = this.activeCall.callStartTime
+          ? Math.floor((Date.now() - this.activeCall.callStartTime) / 1000)
+          : undefined;
+
         await this.updateCallRecord(
           this.activeCall.callData.callId,
-          "completed"
+          "completed",
+          duration
         );
       }
+
+      this.cleanupCall();
     } catch (error) {
       console.error("Error ending call:", error);
+      this.cleanupCall();
     }
-
-    this.cleanupCall();
   }
 
   // Decline call
   async declineCall(callData: UnifiedCallData) {
     try {
-      console.log("🔄 Declining call using", callData.platform);
+      console.log("❌ Declining call...");
 
-      if (callData.platform === "jitsi") {
-        // Convert UnifiedCallData to JitsiCallData format
-        const jitsiCallData = {
-          callId: callData.callId,
-          callerId: callData.callerId,
-          receiverId: callData.receiverId,
-          callType: callData.callType,
-          callerName: callData.callerName,
-          callerAvatar: callData.callerAvatar,
-          status: callData.status,
-          roomName: callData.roomName || "",
-        };
-        await jitsiCallingService.declineCall(jitsiCallData);
-      } else {
-        await callingService.declineCall(callData);
-      }
+      // Decline call using Jitsi
+      const jitsiCallData = {
+        callId: callData.callId,
+        callerId: callData.callerId,
+        receiverId: callData.receiverId,
+        callType: callData.callType,
+        callerName: callData.callerName,
+        callerAvatar: callData.callerAvatar,
+        status: callData.status,
+        roomName: callData.roomName || "",
+      };
+
+      await jitsiCallingService.declineCall(jitsiCallData);
 
       // Update call record in backend
       if (callData.callId) {
         await this.updateCallRecord(callData.callId, "rejected");
       }
+
+      this.cleanupCall();
     } catch (error) {
       console.error("Error declining call:", error);
+      this.cleanupCall();
     }
-
-    this.cleanupCall();
   }
 
   // Clean up call resources
   private cleanupCall() {
-    console.log("=== UNIFIED CALLING SERVICE: cleanupCall ===");
-
-    // Clean up based on platform
     if (this.activeCall) {
-      if (this.activeCall.callData.platform === "jitsi") {
-        jitsiCallingService.cleanup();
-      } else {
-        callingService.cleanup();
+      // Clean up Jitsi if needed
+      if (this.activeCall.jitsiApi) {
+        try {
+          this.activeCall.jitsiApi.dispose();
+        } catch (error) {
+          console.error("Error disposing Jitsi API:", error);
+        }
       }
     }
 
-    // Reset call state
     this.activeCall = null;
-
-    console.log("✅ Unified call resources cleaned up");
+    console.log("🧹 Call resources cleaned up");
   }
 
-  // Get current call state
+  // Get current call
   getCurrentCall(): UnifiedCall | null {
     return this.activeCall;
   }
 
-  // Get local stream
+  // Get local stream (for compatibility)
   getLocalStream(): MediaStream | null {
-    if (!this.activeCall) return null;
-
-    if (this.activeCall.callData.platform === "jitsi") {
-      return jitsiCallingService.getLocalStream();
-    } else {
-      return callingService.getLocalStream();
-    }
+    return this.activeCall?.localStream || null;
   }
 
-  // Get remote stream
+  // Get remote stream (for compatibility)
   getRemoteStream(): MediaStream | null {
-    if (!this.activeCall) return null;
-
-    if (this.activeCall.callData.platform === "jitsi") {
-      return jitsiCallingService.getRemoteStream();
-    } else {
-      return callingService.getRemoteStream();
-    }
+    return this.activeCall?.remoteStream || null;
   }
 
   // Check if call is active
   isCallActive(): boolean {
-    if (!this.activeCall) return false;
-
-    if (this.activeCall.callData.platform === "jitsi") {
-      return jitsiCallingService.isCallActive();
-    } else {
-      return callingService.isCallActive();
-    }
+    return this.activeCall !== null;
   }
 
   // Get call data
@@ -520,76 +429,21 @@ class UnifiedCallingService {
     return this.activeCall?.callData || null;
   }
 
-  // Get current platform
-  getCurrentPlatform(): "jitsi" | "webrtc" | null {
-    return this.activeCall?.callData.platform || null;
+  // Get current platform (always Jitsi)
+  getCurrentPlatform(): "jitsi" | null {
+    return this.activeCall ? "jitsi" : null;
   }
 
-  // Switch platform during call (if supported)
-  async switchPlatform(targetPlatform: "jitsi" | "webrtc"): Promise<boolean> {
-    try {
-      if (!this.activeCall) {
-        throw new Error("No active call to switch");
-      }
-
-      const currentPlatform = this.activeCall.callData.platform;
-      if (currentPlatform === targetPlatform) {
-        console.log(`Already using ${targetPlatform}`);
-        return true;
-      }
-
-      console.log(`🔄 Switching from ${currentPlatform} to ${targetPlatform}`);
-
-      // End current call
-      await this.endCall();
-
-      // Start new call with target platform
-      const callData = this.activeCall.callData;
-      const success = await this.initiateCall({
-        callerId: callData.callerId,
-        receiverId: callData.receiverId,
-        callType: callData.callType,
-        callerName: callData.callerName,
-        callerAvatar: callData.callerAvatar,
-      });
-
-      if (success) {
-        console.log(`✅ Successfully switched to ${targetPlatform}`);
-        if (this.onPlatformChanged) {
-          this.onPlatformChanged(targetPlatform);
-        }
-        return true;
-      } else {
-        throw new Error(`Failed to switch to ${targetPlatform}`);
-      }
-    } catch (error) {
-      console.error("❌ Error switching platform:", error);
-      return false;
-    }
+  // Platform switching is disabled (Jitsi-only)
+  async switchPlatform(): Promise<boolean> {
+    console.log("🔄 Platform switching is disabled - using Jitsi only");
+    return true; // Always return true since we're already on Jitsi
   }
 
-  // Get platform statistics
-  getPlatformStats(): {
-    jitsiAvailable: boolean;
-    webrtcAvailable: boolean;
-    recommended: "jitsi" | "webrtc";
-    preferred: "jitsi" | "webrtc";
-    fallbackEnabled: boolean;
-  } {
-    return {
-      jitsiAvailable: this.isJitsiAvailable(),
-      webrtcAvailable: this.isWebRTCAvailable(),
-      recommended: this.getRecommendedPlatform(),
-      preferred: this.preferredPlatform,
-      fallbackEnabled: this.fallbackToWebRTC,
-    };
-  }
-
-  // Cleanup method to be called when component unmounts
+  // Cleanup service
   cleanup() {
     this.cleanupCall();
-    jitsiCallingService.cleanup();
-    callingService.cleanup();
+    console.log("🧹 UnifiedCallingService cleaned up");
   }
 }
 

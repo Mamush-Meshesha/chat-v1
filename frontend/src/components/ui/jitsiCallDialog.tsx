@@ -168,11 +168,8 @@ const JitsiCallDialog: FC<JitsiCallDialogProps> = ({
             console.log("✅ Jitsi meeting joined successfully");
           } catch (error) {
             console.error("❌ Failed to join Jitsi meeting:", error);
-            // Fallback to WebRTC if Jitsi fails
-            if (platformStats.webrtcAvailable) {
-              console.log("🔄 Falling back to WebRTC...");
-              await unifiedCallingService.switchPlatform("webrtc");
-            }
+            // No fallback available - Jitsi-only system
+            console.log("🔄 Jitsi failed - no fallback available");
           }
         }
       } else {
@@ -229,20 +226,10 @@ const JitsiCallDialog: FC<JitsiCallDialogProps> = ({
     onClose();
   };
 
-  // Handle platform switching
-  const handlePlatformSwitch = async (targetPlatform: "jitsi" | "webrtc") => {
-    try {
-      const success = await unifiedCallingService.switchPlatform(
-        targetPlatform
-      );
-      if (success) {
-        console.log(`✅ Successfully switched to ${targetPlatform}`);
-      } else {
-        console.error(`❌ Failed to switch to ${targetPlatform}`);
-      }
-    } catch (error) {
-      console.error("❌ Error switching platform:", error);
-    }
+  // Handle platform switching (disabled for Jitsi-only)
+  const handlePlatformSwitch = async () => {
+    console.log("🔄 Platform switching is disabled - using Jitsi only");
+    return;
   };
 
   if (!isOpen) return null;
@@ -340,7 +327,7 @@ const JitsiCallDialog: FC<JitsiCallDialogProps> = ({
                   <p className="text-xs text-gray-600 mb-2">Switch Platform:</p>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handlePlatformSwitch("jitsi")}
+                      onClick={() => handlePlatformSwitch()}
                       disabled={
                         !platformStats.jitsiAvailable ||
                         currentPlatform === "jitsi"
@@ -348,16 +335,6 @@ const JitsiCallDialog: FC<JitsiCallDialogProps> = ({
                       className="px-2 py-1 text-xs bg-blue-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-600"
                     >
                       Switch to Jitsi
-                    </button>
-                    <button
-                      onClick={() => handlePlatformSwitch("webrtc")}
-                      disabled={
-                        !platformStats.webrtcAvailable ||
-                        currentPlatform === "webrtc"
-                      }
-                      className="px-2 py-1 text-xs bg-green-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600"
-                    >
-                      Switch to WebRTC
                     </button>
                   </div>
                 </div>
@@ -379,24 +356,12 @@ const JitsiCallDialog: FC<JitsiCallDialogProps> = ({
                 Jitsi Meeting Active
               </div>
             </div>
-          ) : isCallActive && currentPlatform === "webrtc" ? (
-            <div className="relative bg-gray-100 rounded-lg overflow-hidden h-96 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📹</div>
-                <p className="text-gray-600">WebRTC Video Call Active</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Use your device's camera and microphone controls
-                </p>
-              </div>
-            </div>
           ) : isConnecting ? (
             <div className="relative bg-gray-100 rounded-lg overflow-hidden h-96 flex items-center justify-center">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
                 <p className="text-blue-600 text-lg">
-                  {currentPlatform === "jitsi"
-                    ? "Connecting to Jitsi meeting..."
-                    : "Establishing WebRTC connection..."}
+                  Connecting to Jitsi meeting...
                 </p>
               </div>
             </div>

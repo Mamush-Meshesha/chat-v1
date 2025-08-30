@@ -25,12 +25,10 @@ const UnifiedCallingExample: React.FC = () => {
   );
   const [currentCall, setCurrentCall] = useState<UnifiedCallData | null>(null);
 
-  // Load users on component mount
   useEffect(() => {
     loadUsers();
   }, []);
 
-  // Setup unified calling service callbacks
   useEffect(() => {
     unifiedCallingService.onIncomingCall = (data) => {
       console.log("📞 Incoming call received:", data);
@@ -149,43 +147,19 @@ const UnifiedCallingExample: React.FC = () => {
   };
 
   const handleCallEnded = () => {
-    setCurrentCall(null);
     setShowCallDialog(false);
-    setShowIncomingCall(false);
-    setIncomingCall(null);
+    setCurrentCall(null);
   };
 
-  const handlePlatformSwitch = async (targetPlatform: "jitsi" | "webrtc") => {
-    try {
-      const success = await unifiedCallingService.switchPlatform(
-        targetPlatform
-      );
-      if (success) {
-        alert(`Successfully switched to ${targetPlatform.toUpperCase()}`);
-      } else {
-        alert(`Failed to switch to ${targetPlatform.toUpperCase()}`);
-      }
-    } catch (error) {
-      console.error("Error switching platform:", error);
-      alert("Error switching platform");
-    }
-  };
-
-  const setPreferredPlatform = (platform: "jitsi" | "webrtc") => {
+  const setPreferredPlatform = (platform: "jitsi") => {
     unifiedCallingService.setPreferredPlatform(platform);
-    setPlatformStats(unifiedCallingService.getPlatformStats());
-  };
-
-  const toggleFallback = () => {
-    const currentFallback = platformStats.fallbackEnabled;
-    unifiedCallingService.setFallbackToWebRTC(!currentFallback);
     setPlatformStats(unifiedCallingService.getPlatformStats());
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">
-        Unified Calling System Example
+        Jitsi-Only Calling System Example
       </h1>
 
       {/* Platform Information */}
@@ -193,7 +167,7 @@ const UnifiedCallingExample: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-800 mb-4">
           Platform Status
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <div className="text-center">
             <div
               className={`text-2xl mb-2 ${
@@ -208,33 +182,14 @@ const UnifiedCallingExample: React.FC = () => {
             </div>
           </div>
           <div className="text-center">
-            <div
-              className={`text-2xl mb-2 ${
-                platformStats.webrtcAvailable
-                  ? "text-green-500"
-                  : "text-red-500"
-              }`}
-            >
-              {platformStats.webrtcAvailable ? "✅" : "❌"}
-            </div>
+            <div className="text-2xl mb-2 text-gray-400">❌</div>
             <div className="text-sm font-medium">WebRTC</div>
-            <div className="text-xs text-gray-500">
-              {platformStats.webrtcAvailable ? "Available" : "Not Available"}
-            </div>
+            <div className="text-xs text-gray-500">Disabled</div>
           </div>
           <div className="text-center">
             <div className="text-2xl mb-2 text-blue-500">🎯</div>
-            <div className="text-sm font-medium">Recommended</div>
-            <div className="text-xs text-gray-500 capitalize">
-              {platformStats.recommended}
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl mb-2 text-purple-500">⭐</div>
-            <div className="text-sm font-medium">Preferred</div>
-            <div className="text-xs text-gray-500 capitalize">
-              {platformStats.preferred}
-            </div>
+            <div className="text-sm font-medium">System</div>
+            <div className="text-xs text-gray-500">Jitsi-Only</div>
           </div>
         </div>
 
@@ -250,26 +205,22 @@ const UnifiedCallingExample: React.FC = () => {
           >
             Set Jitsi as Preferred
           </button>
-          <button
-            onClick={() => setPreferredPlatform("webrtc")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              platformStats.preferred === "webrtc"
-                ? "bg-green-500 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            Set WebRTC as Preferred
-          </button>
-          <button
-            onClick={toggleFallback}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              platformStats.fallbackEnabled
-                ? "bg-green-500 text-white"
-                : "bg-red-500 text-white"
-            }`}
-          >
-            {platformStats.fallbackEnabled ? "Disable" : "Enable"} Fallback
-          </button>
+          <div className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-500">
+            WebRTC Fallback: Disabled
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="text-sm font-medium text-blue-700 mb-2">
+            🎯 Jitsi-Only System
+          </h3>
+          <div className="text-xs text-blue-600 space-y-1">
+            <p>✅ All calls use Jitsi Meet for consistent experience</p>
+            <p>✅ High-quality video and audio calls</p>
+            <p>✅ Built-in screen sharing, chat, and recording</p>
+            <p>✅ No platform switching or fallback complexity</p>
+            <p>✅ Works on all devices and browsers</p>
+          </div>
         </div>
       </div>
 
@@ -302,11 +253,11 @@ const UnifiedCallingExample: React.FC = () => {
         </div>
 
         {/* Call Type Selection */}
-        <div className="mb-4">
+        <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Call Type
           </label>
-          <div className="flex gap-4">
+          <div className="flex space-x-4">
             <label className="flex items-center">
               <input
                 type="radio"
@@ -317,7 +268,7 @@ const UnifiedCallingExample: React.FC = () => {
                 }
                 className="mr-2"
               />
-              Audio Call
+              <span className="text-sm">Audio Call</span>
             </label>
             <label className="flex items-center">
               <input
@@ -329,7 +280,7 @@ const UnifiedCallingExample: React.FC = () => {
                 }
                 className="mr-2"
               />
-              Video Call
+              <span className="text-sm">Video Call</span>
             </label>
           </div>
         </div>
@@ -341,7 +292,7 @@ const UnifiedCallingExample: React.FC = () => {
           className="w-full bg-blue-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
         >
           {callType === "video" ? "📹" : "🎵"} Initiate{" "}
-          {callType === "video" ? "Video" : "Audio"} Call
+          {callType === "video" ? "Video" : "Audio"} Call with Jitsi
         </button>
       </div>
 
@@ -378,33 +329,10 @@ const UnifiedCallingExample: React.FC = () => {
             </div>
           </div>
 
-          {/* Platform Switching */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="text-sm font-medium text-gray-600 mb-2">
-              Switch Platform
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePlatformSwitch("jitsi")}
-                disabled={
-                  !platformStats.jitsiAvailable ||
-                  currentCall.platform === "jitsi"
-                }
-                className="px-3 py-1 text-sm bg-blue-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
-              >
-                Switch to Jitsi
-              </button>
-              <button
-                onClick={() => handlePlatformSwitch("webrtc")}
-                disabled={
-                  !platformStats.webrtcAvailable ||
-                  currentCall.platform === "webrtc"
-                }
-                className="px-3 py-1 text-sm bg-green-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition-colors"
-              >
-                Switch to WebRTC
-              </button>
-            </div>
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              🎯 This call is using Jitsi Meet for high-quality communication
+            </p>
           </div>
         </div>
       )}
@@ -422,7 +350,7 @@ const UnifiedCallingExample: React.FC = () => {
         </div>
       </div>
 
-      {/* Call Dialogs */}
+      {/* UnifiedCallDialog for outgoing/active calls */}
       {showCallDialog && (
         <UnifiedCallDialog
           isOpen={showCallDialog}
@@ -436,6 +364,7 @@ const UnifiedCallingExample: React.FC = () => {
         />
       )}
 
+      {/* UnifiedCallDialog for incoming calls */}
       {showIncomingCall && incomingCall && (
         <UnifiedCallDialog
           isOpen={showIncomingCall}
