@@ -38,12 +38,40 @@ const callSchema = new mongoose.Schema(
     endTime: {
       type: Date,
     },
+    // Jitsi-specific fields
+    roomName: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    platform: {
+      type: String,
+      enum: ["jitsi", "webrtc"],
+      default: "jitsi",
+    },
+    // Additional metadata for Jitsi
+    meetingId: {
+      type: String,
+      sparse: true,
+    },
+    participantCount: {
+      type: Number,
+      default: 0,
+    },
+    recordingUrl: {
+      type: String,
+    },
+    livestreamUrl: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
 // Index for better query performance
 callSchema.index({ caller: 1, receiver: 1, startTime: -1 });
+callSchema.index({ roomName: 1 }); // Index for room name lookups
+callSchema.index({ platform: 1 }); // Index for platform filtering
 
 const Call = mongoose.model("Call", callSchema);
 

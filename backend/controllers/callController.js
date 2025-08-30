@@ -44,6 +44,8 @@ const getCallHistory = asyncHandler(async (req, res) => {
       }),
       userId: otherUser._id.toString(),
       status: call.status,
+      roomName: call.roomName || null, // Add room name for Jitsi
+      platform: call.platform || "jitsi", // Add platform info
     };
   });
 
@@ -57,7 +59,7 @@ const getCallHistory = asyncHandler(async (req, res) => {
 // @route   POST /api/calls
 // @access  Private
 const createCall = asyncHandler(async (req, res) => {
-  const { receiverId, type, callType } = req.body;
+  const { receiverId, type, callType, roomName, platform = "jitsi" } = req.body;
   const callerId = req.user._id;
 
   // Check if receiver exists
@@ -67,12 +69,18 @@ const createCall = asyncHandler(async (req, res) => {
     throw new Error("Receiver not found");
   }
 
+  // Generate room name if not provided
+  const finalRoomName =
+    roomName || `chat-${[callerId, receiverId].sort().join("-")}-${Date.now()}`;
+
   const call = await Call.create({
     caller: callerId,
     receiver: receiverId,
     type,
     callType,
     startTime: new Date(),
+    roomName: finalRoomName,
+    platform,
   });
 
   const populatedCall = await Call.findById(call._id)
@@ -90,7 +98,7 @@ const createCall = asyncHandler(async (req, res) => {
 // @access  Private
 const updateCall = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { status, duration } = req.body;
+  const { status, duration, roomName, platform } = req.body;
   const userId = req.user._id;
 
   const call = await Call.findById(id);
@@ -111,6 +119,8 @@ const updateCall = asyncHandler(async (req, res) => {
   const updateData = {};
   if (status) updateData.status = status;
   if (duration !== undefined) updateData.duration = duration;
+  if (roomName) updateData.roomName = roomName;
+  if (platform) updateData.platform = platform;
   if (status === "completed" || status === "missed" || status === "rejected") {
     updateData.endTime = new Date();
   }
@@ -128,4 +138,29 @@ const updateCall = asyncHandler(async (req, res) => {
   });
 });
 
-export { getCallHistory, createCall, updateCall };
+// @desc    Get call by room name (for Jitsi)
+// @route   GET /api/calls/room/:roomName
+// @access  Private
+const getCallByRoomName = asyncHandler(async (req, res) => {
+  const { roomName } = req.params;
+  const userId = req.user._id;
+
+  const call = await Call.findOne({
+    roomName,
+    $or: [{ caller: userId }, { receiver: userId }],
+  })
+    .populate("caller", "name email")
+    .populate("receiver", "name email");
+
+  if (!call) {
+    res.status(404);
+    throw new Error("Call not found");
+  }
+
+  res.json({
+    success: true,
+    call,
+  });
+});
+
+export { getCallHistory, createCall, updateCall, getCallByRoomName };

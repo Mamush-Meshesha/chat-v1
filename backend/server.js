@@ -31,6 +31,7 @@ app.use("/api/groups", groupRoute);
 
 app.use(notFound);
 app.use(errorHandler);
+
 app.listen(port, () => {
   console.log(`server is running on ${port}`);
 });
