@@ -45,7 +45,9 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
 
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
   const callStartTimeRef = useRef<number | null>(null);
-  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const durationIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   // Update platform stats when they change
   useEffect(() => {
