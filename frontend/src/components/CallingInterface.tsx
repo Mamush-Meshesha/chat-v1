@@ -30,11 +30,12 @@ const CallingInterface: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    unifiedCallingService.onIncomingCall = (data) => {
-      console.log("📞 Incoming call received:", data);
-      setIncomingCall(data);
-      setShowIncomingCall(true);
-    };
+    // REMOVED: This was intercepting incoming call events before dashboardheader.tsx could handle them
+    // unifiedCallingService.onIncomingCall = (data) => {
+    //   console.log("📞 Incoming call received:", data);
+    //   setIncomingCall(data);
+    //   setShowIncomingCall(true);
+    // };
 
     unifiedCallingService.onCallConnected = (data) => {
       console.log("🎉 Call connected:", data);
@@ -61,7 +62,7 @@ const CallingInterface: React.FC = () => {
     };
 
     return () => {
-      unifiedCallingService.onIncomingCall = undefined;
+      // unifiedCallingService.onIncomingCall = undefined; // REMOVED: No longer setting this callback
       unifiedCallingService.onCallConnected = undefined;
       unifiedCallingService.onCallEnded = undefined;
       unifiedCallingService.onCallFailed = undefined;
