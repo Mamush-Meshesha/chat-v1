@@ -189,22 +189,23 @@ const Home: FC<HomeProps> = () => {
           });
 
           // Listen for incoming calls
-          socket.current.on("incomingCall", (data) => {
-            console.log("Incoming call received:", data);
-            if (authUser?._id) {
-              setIncomingCall({
-                callId: data.callId,
-                callerId: data.callerId,
-                receiverId: authUser._id, // Add the missing receiverId
-                callType: data.callType,
-                callerName: data.callerName || "Unknown",
-                callerAvatar: data.callerAvatar,
-                status: "ringing" as const, // Add the missing status
-                platform: "jitsi" as const, // Add the platform property
-              });
-              setIsCallDialogOpen(true);
-            }
-          });
+          // REMOVED: This was intercepting events before dashboardheader.tsx could handle them
+          // socket.current.on("incomingCall", (data) => {
+          //   console.log("Incoming call received:", data);
+          //   if (authUser?._id) {
+          //     setIncomingCall({
+          //       callId: data.callId,
+          //       callerId: data.callerId,
+          //       receiverId: authUser._id, // Add the missing receiverId
+          //       callType: data.callType,
+          //       callerName: data.callerName || "Unknown",
+          //       callerAvatar: data.callerAvatar,
+          //       status: "ringing" as const, // Add the missing status
+          //       platform: "jitsi" as const, // Add the platform property
+          //     });
+          //     setIsCallDialogOpen(true);
+          //   }
+          // });
         } else {
           console.log(
             "✅ Home: Socket already connected, reusing existing connection"

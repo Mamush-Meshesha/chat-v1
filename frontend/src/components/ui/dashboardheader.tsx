@@ -212,6 +212,19 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         });
       }
 
+      // GLOBAL EVENT LISTENER - catch the event no matter where it goes
+      console.log("🔌 Adding GLOBAL event listener to window");
+      window.addEventListener("incomingCall", (event: any) => {
+        console.log("🎯 GLOBAL WINDOW HANDLER EXECUTED!");
+        console.log("📞 GLOBAL INCOMING CALL RECEIVED:", event.detail);
+      });
+
+      // Also try to catch it on the document
+      document.addEventListener("incomingCall", (event: any) => {
+        console.log("🎯 GLOBAL DOCUMENT HANDLER EXECUTED!");
+        console.log("📞 GLOBAL DOCUMENT INCOMING CALL RECEIVED:", event.detail);
+      });
+
       console.log("✅ incomingCall event listener registered successfully");
 
       // Listen for call accepted
