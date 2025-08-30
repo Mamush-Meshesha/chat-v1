@@ -73,7 +73,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
 
   // Handle call duration timer
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
 
     if (isCallActive && callStartTime) {
       interval = setInterval(() => {
