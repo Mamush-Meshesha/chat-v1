@@ -146,6 +146,14 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
     }
   }, [callData, isIncoming]);
 
+  // Track Jitsi container creation
+  useEffect(() => {
+    if (jitsiContainerRef.current) {
+      console.log("🎯 Jitsi container DOM element created and available");
+      console.log("🎯 Container element:", jitsiContainerRef.current);
+    }
+  }, [isConnecting, isCallActive, isIncoming, callData]);
+
   // Handle call acceptance
   const handleAccept = async () => {
     if (!callData) return;
@@ -427,8 +435,8 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
           )}
         </div>
 
-        {/* Jitsi Container - Show when connecting or active */}
-        {(isConnecting || isCallActive) && (
+        {/* Jitsi Container - Show when connecting, active, or when accepting incoming call */}
+        {(isConnecting || isCallActive || (isIncoming && callData)) && (
           <div
             ref={jitsiContainerRef}
             id="jitsi-container"

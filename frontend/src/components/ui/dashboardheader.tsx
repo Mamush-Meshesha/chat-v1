@@ -100,6 +100,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           callerAvatar: data.callerAvatar || "/profile.jpg",
           platform: data.platform || "jitsi",
           status: "ringing",
+          roomName: data.roomName, // Add roomName from socket event
         });
 
         // Open call dialog
