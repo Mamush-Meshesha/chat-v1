@@ -299,12 +299,34 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     }
   };
 
-  // Call action handlers - These are now handled by the calling service
+  // Handle incoming call acceptance
   const handleAcceptCall = async () => {
-    console.log(
-      "🔄 Dashboard header: Call accepted - delegating to calling service"
-    );
-    // The calling service will handle this
+    console.log("=== INCOMING CALL ACCEPTANCE DEBUG ===");
+    console.log("Current outgoingCallData:", outgoingCallData);
+    console.log("Current isIncomingCall:", isIncomingCall);
+    console.log("Current callType:", callType);
+
+    if (!outgoingCallData) {
+      console.log("❌ No outgoing call data available");
+      return;
+    }
+
+    try {
+      console.log("🎯 Accepting incoming call with data:", outgoingCallData);
+      const success = await unifiedCallingService.acceptCall(outgoingCallData);
+
+      if (success) {
+        console.log("✅ Incoming call accepted successfully!");
+        setIsCallActive(true);
+        setIsIncomingCall(false);
+      } else {
+        console.log("❌ Failed to accept incoming call");
+        alert("Failed to accept call. Please try again.");
+      }
+    } catch (error) {
+      console.error("❌ Error accepting incoming call:", error);
+      alert("Error accepting call. Please try again.");
+    }
   };
 
   const handleDeclineCall = () => {

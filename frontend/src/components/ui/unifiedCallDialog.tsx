@@ -4,6 +4,7 @@ import { BsThreeDots } from "react-icons/bs";
 import unifiedCallingService, {
   UnifiedCallData,
 } from "../../services/unifiedCallingService";
+import { JitsiMeeting } from "@jitsi/react-sdk";
 
 interface UnifiedCallDialogProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ interface UnifiedCallDialogProps {
   onEndCall?: () => void;
   onCancel?: () => void;
   callData?: UnifiedCallData;
-  onCallEnded?: () => void;
+  onCallEnded?: (data?: { reason: string }) => void;
 }
 
 const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
@@ -349,49 +350,8 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
           </div>
         </div>
 
-        {/* Video Display (Jitsi) */}
-        {currentPlatform === "jitsi" && (
-          <div className="mb-6">
-            {isConnecting && !isCallActive ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-blue-600 text-lg">
-                  Connecting to Jitsi meeting...
-                </p>
-              </div>
-            ) : isCallActive ? (
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <h4 className="text-lg font-medium text-gray-800 mb-2">
-                  🎥 Jitsi Meeting Active
-                </h4>
-                <div className="text-xs text-blue-600 space-y-1">
-                  <p>
-                    🎤 Use Jitsi controls for mute, camera, screen share, and
-                    more
-                  </p>
-                  <p>
-                    💬 Chat, recording, and other features available in Jitsi
-                  </p>
-                  <p>🖥️ Screen sharing and presentation mode supported</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <h4 className="text-lg font-medium text-gray-800 mb-2">
-                  📞 Jitsi Call Ready
-                </h4>
-                <p className="text-sm text-gray-500">
-                  {callType === "video"
-                    ? "Video call will start in Jitsi"
-                    : "Audio call will start in Jitsi"}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Call Action Buttons */}
-        <div className="flex justify-center space-x-4">
+        <div className="flex justify-center space-x-4 mb-6">
           {isIncoming ? (
             <>
               <button
@@ -452,6 +412,91 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
                   <div className="text-4xl mb-2">🎥</div>
                   <p>Jitsi meeting will appear here...</p>
                 </div>
+              </div>
+            )}
+
+            {/* Render Jitsi component when call is active */}
+            {isCallActive && callData?.roomName && (
+              <div className="w-full h-full">
+                <JitsiMeeting
+                  domain="meet.jit.si"
+                  roomName={callData.roomName}
+                  configOverwrite={{
+                    startAudioOnly: callType === "audio",
+                    startWithAudioMuted: false,
+                    startWithVideoMuted: callType === "audio",
+                    disableAudioLevels: false,
+                    websocket: "wss://meet.jit.si/xmpp-websocket",
+                    maxFullResolutionParticipants: 2,
+                    maxThumbnails: 2,
+                    disableModeratorIndicator: true,
+                    enableLobbyChat: false,
+                    disable1On1Mode: false,
+                    fileRecordingsEnabled: false,
+                    liveStreamingEnabled: false,
+                    chatEnabled: true,
+                    desktopSharingEnabled: true,
+                    desktopSharingSources: ["screen", "window", "tab"],
+                  }}
+                  interfaceConfigOverwrite={{
+                    TOOLBAR_BUTTONS: [
+                      "microphone",
+                      "camera",
+                      "closedcaptions",
+                      "desktop",
+                      "fullscreen",
+                      "fodeviceselection",
+                      "hangup",
+                      "chat",
+                      "recording",
+                      "livestreaming",
+                      "etherpad",
+                      "sharedvideo",
+                      "settings",
+                      "raisehand",
+                      "videoquality",
+                      "filmstrip",
+                      "feedback",
+                      "stats",
+                      "shortcuts",
+                      "tileview",
+                      "select-background",
+                      "download",
+                      "help",
+                      "mute-everyone",
+                      "security",
+                    ],
+                    SHOW_JITSI_WATERMARK: false,
+                    SHOW_WATERMARK_FOR_GUESTS: false,
+                    SHOW_POWERED_BY: false,
+                    SHOW_BRAND_WATERMARK: false,
+                    SHOW_PROMOTIONAL_CLOSE: false,
+                    SHOW_HEADER: false,
+                    SHOW_FOOTER: false,
+                    SHOW_MEETING_NAME: false,
+                    TOOLBAR_ALWAYS_VISIBLE: true,
+                    VERTICAL_FILMSTRIP: false,
+                    HIDE_JITSI_WATERMARK: true,
+                    HIDE_WATERMARK_FOR_GUESTS: true,
+                    HIDE_POWERED_BY: true,
+                    HIDE_BRAND_WATERMARK: true,
+                    HIDE_PROMOTIONAL_CLOSE: true,
+                  }}
+                  userInfo={{
+                    displayName: callerName,
+                    email: "user@example.com",
+                  }}
+                  onApiReady={(externalApi) => {
+                    console.log("🎉 Jitsi API ready:", externalApi);
+                  }}
+                  onReadyToClose={() => {
+                    console.log("🔚 Jitsi ready to close");
+                    if (onCallEnded) onCallEnded({ reason: "User closed" });
+                  }}
+                  getIFrameRef={(iframeRef) => {
+                    console.log("🎥 Jitsi iframe ref:", iframeRef);
+                  }}
+                />
               </div>
             )}
           </div>

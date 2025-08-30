@@ -3,6 +3,9 @@ import axios from "axios";
 import { getApiUrl } from "../config/config";
 import socketManager from "./socketManager";
 
+// Define Jitsi API type locally
+type JitsiMeetExternalApi = any;
+
 export interface JitsiCallData {
   callId: string;
   callerId: string;
@@ -18,14 +21,14 @@ export interface JitsiCall {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   callData: JitsiCallData;
-  jitsiApi: any;
+  jitsiApi: JitsiMeetExternalApi | null;
 }
 
 class JitsiCallingService {
   private activeCall: JitsiCall | null = null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
-  private jitsiApi: any = null;
+  private jitsiApi: JitsiMeetExternalApi | null = null;
   private callStartTime: number | null = null;
   private socket: any = null;
 
@@ -221,22 +224,7 @@ class JitsiCallingService {
     return `chat-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
   }
 
-  // Get current user ID from localStorage
-  private getCurrentUserId(): string | null {
-    try {
-      const authUser = localStorage.getItem("authUser");
-      if (authUser) {
-        const user = JSON.parse(authUser);
-        return user._id || null;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error getting current user ID:", error);
-      return null;
-    }
-  }
-
-  // Get current user info from localStorage
+  // Get current user info
   private getCurrentUserInfo(): { name: string; email: string } | null {
     try {
       const authUser = localStorage.getItem("authUser");
@@ -244,7 +232,7 @@ class JitsiCallingService {
         const user = JSON.parse(authUser);
         return {
           name: user.name || "User",
-          email: user.email || "",
+          email: user.email || "user@example.com",
         };
       }
       return null;
@@ -409,7 +397,7 @@ class JitsiCallingService {
     roomName: string,
     displayName: string,
     isAudioOnly: boolean = false
-  ): Promise<any> {
+  ): Promise<JitsiMeetExternalApi> {
     try {
       console.log("🔄 Joining Jitsi meeting:", roomName);
 
@@ -424,6 +412,7 @@ class JitsiCallingService {
 
       // Jitsi configuration
       const config = {
+        domain: "meet.jit.si", // Add Jitsi server domain
         roomName,
         width: "100%",
         height: "100%",
@@ -513,165 +502,17 @@ class JitsiCallingService {
 
       console.log("🎯 Jitsi config:", config);
 
-      // Create Jitsi meeting
-      const jitsiApi = new (JitsiMeeting as any)(config);
-      console.log("✅ Jitsi meeting created:", jitsiApi);
+      // Since we're using @jitsi/react-sdk, we need to render the component
+      // For now, let's just store the config and let the React component handle the rendering
+      console.log("✅ Jitsi config prepared for React component");
 
-      // Store the API reference
+      // Store the config for the React component to use
       if (this.activeCall) {
-        this.activeCall.jitsiApi = jitsiApi;
+        this.activeCall.jitsiApi = { config, isReactComponent: true };
       }
 
-      // Set up event handlers
-      jitsiApi.addEventListeners({
-        readyToClose: () => {
-          console.log("Jitsi meeting ready to close");
-          this.endCall();
-        },
-        participantLeft: (participant: any) => {
-          console.log("Participant left:", participant);
-          // Notify socket server
-          if (this.socket && this.activeCall) {
-            this.socket.emit("leaveMeeting", {
-              roomName: this.activeCall.callData.roomName,
-              userId: this.getCurrentUserId(),
-            });
-          }
-          if (this.onCallEnded) {
-            this.onCallEnded({ reason: "Participant left", participant });
-          }
-        },
-        participantJoined: (participant: any) => {
-          console.log("Participant joined:", participant);
-          // Notify socket server
-          if (this.socket && this.activeCall) {
-            this.socket.emit("joinMeeting", {
-              roomName: this.activeCall.callData.roomName,
-              userId: this.getCurrentUserId(),
-              displayName: this.getCurrentUserInfo()?.name || "User",
-            });
-          }
-          if (this.onCallConnected) {
-            this.onCallConnected({ participant });
-          }
-        },
-        audioMuteStatusChanged: (data: any) => {
-          console.log("Audio mute status changed:", data);
-        },
-        videoMuteStatusChanged: (data: any) => {
-          console.log("Video mute status changed:", data);
-        },
-        screenSharingStatusChanged: (data: any) => {
-          console.log("Screen sharing status changed:", data);
-        },
-        chatMessageReceived: (data: any) => {
-          console.log("Chat message received:", data);
-        },
-        recordingStatusChanged: (data: any) => {
-          console.log("Recording status changed:", data);
-        },
-        livestreamingStatusChanged: (data: any) => {
-          console.log("Livestreaming status changed:", data);
-        },
-        videoConferenceJoined: (data: any) => {
-          console.log("Video conference joined:", data);
-          this.callStartTime = Date.now();
-          if (this.activeCall) {
-            this.activeCall.callData.status = "active";
-          }
-          if (this.onCallConnected) {
-            this.onCallConnected(data);
-          }
-        },
-        videoConferenceLeft: (data: any) => {
-          console.log("Video conference left:", data);
-          this.endCall();
-        },
-        videoQualityChanged: (data: any) => {
-          console.log("Video quality changed:", data);
-        },
-        audioLevelChanged: (data: any) => {
-          console.log("Audio level changed:", data);
-        },
-        dominantSpeakerChanged: (data: any) => {
-          console.log("Dominant speaker changed:", data);
-        },
-        lastNEndpointsChanged: (data: any) => {
-          console.log("Last N endpoints changed:", data);
-        },
-        endpointTextMessageReceived: (data: any) => {
-          console.log("Endpoint text message received:", data);
-        },
-        endpointMessageReceived: (data: any) => {
-          console.log("Endpoint message received:", data);
-        },
-        endpointSilenceChanged: (data: any) => {
-          console.log("Endpoint silence changed:", data);
-        },
-        endpointMuteChanged: (data: any) => {
-          console.log("Endpoint mute changed:", data);
-        },
-        endpointVideoStatusChanged: (data: any) => {
-          console.log("Endpoint video status changed:", data);
-        },
-        endpointAudioStatusChanged: (data: any) => {
-          console.log("Endpoint audio status changed:", data);
-        },
-        endpointDataChannelOpened: (data: any) => {
-          console.log("Endpoint data channel opened:", data);
-        },
-        endpointDataChannelClosed: (data: any) => {
-          console.log("Endpoint data channel closed:", data);
-        },
-        endpointDataChannelMessageReceived: (data: any) => {
-          console.log("Endpoint data channel message received:", data);
-        },
-        endpointDataChannelError: (data: any) => {
-          console.log("Endpoint data channel error:", data);
-        },
-        endpointDataChannelBufferedAmountChanged: (data: any) => {
-          console.log("Endpoint data channel buffered amount changed:", data);
-        },
-        endpointDataChannelStateChanged: (data: any) => {
-          console.log("Endpoint data channel state changed:", data);
-        },
-        endpointDataChannelMaxRetransmitsChanged: (data: any) => {
-          console.log("Endpoint data channel max retransmits changed:", data);
-        },
-        endpointDataChannelMaxPacketLifeTimeChanged: (data: any) => {
-          console.log(
-            "Endpoint data channel max packet life time changed:",
-            data
-          );
-        },
-        endpointDataChannelOrderedChanged: (data: any) => {
-          console.log("Endpoint data channel ordered changed:", data);
-        },
-        endpointDataChannelProtocolChanged: (data: any) => {
-          console.log("Endpoint data channel protocol changed:", data);
-        },
-        endpointDataChannelLabelChanged: (data: any) => {
-          console.log("Endpoint data channel label changed:", data);
-        },
-        endpointDataChannelIdChanged: (data: any) => {
-          console.log("Endpoint data channel ID changed:", data);
-        },
-        endpointDataChannelDirectionChanged: (data: any) => {
-          console.log("Endpoint data channel direction changed:", data);
-        },
-        endpointDataChannelPriorityChanged: (data: any) => {
-          console.log("Endpoint data channel priority changed:", data);
-        },
-        endpointDataChannelReliabilityChanged: (data: any) => {
-          console.log("Endpoint data channel reliability changed:", data);
-        },
-        endpointDataChannelStreamIdChanged: (data: any) => {
-          console.log("Endpoint data channel stream ID changed:", data);
-        },
-      });
-
-      console.log("✅ Jitsi meeting joined successfully");
-      return jitsiApi;
+      // Return success - the actual Jitsi meeting will be rendered by the React component
+      return true;
     } catch (error) {
       console.error("❌ Error joining Jitsi meeting:", error);
       throw error;
