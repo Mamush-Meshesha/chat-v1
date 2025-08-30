@@ -23,6 +23,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
   const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
   const [outgoingCallData, setOutgoingCallData] = useState<any>(null);
+  const [socketReady, setSocketReady] = useState(false);
 
   // Use refs to track current state for logging
   const isCallDialogOpenRef = useRef(false);
@@ -87,7 +88,18 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     // Use socketManager.socket if available, otherwise fall back to socket prop
     const activeSocket = socketManager.socket || socket;
 
-    if (activeSocket && currentUserChat?._id) {
+    // Check if socket is connected and ready
+    const isSocketReady =
+      activeSocket && activeSocket.connected && currentUserChat?._id;
+
+    console.log("🔌 Socket ready check:", {
+      activeSocket: !!activeSocket,
+      connected: activeSocket?.connected,
+      currentUserChat: !!currentUserChat?._id,
+      isSocketReady,
+    });
+
+    if (isSocketReady) {
       console.log(
         "🔌 Setting up socket event listeners for calling with socket:",
         activeSocket.id
@@ -262,8 +274,38 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       console.log("❌ Cannot set up socket event listeners:");
       console.log("  - activeSocket:", !!activeSocket);
       console.log("  - currentUserChat?._id:", !!currentUserChat?._id);
+      console.log("  - socket connected:", activeSocket?.connected);
+
+      // If socket exists but not connected, listen for connection
+      if (activeSocket && !activeSocket.connected && currentUserChat?._id) {
+        console.log("🔄 Socket not connected, waiting for connection...");
+
+        const onConnect = () => {
+          console.log("🔌 Socket connected, setting up event listeners now...");
+          // Force re-run of this useEffect
+          setSocketReady(true);
+        };
+
+        activeSocket.on("connect", onConnect);
+
+        return () => {
+          activeSocket.off("connect", onConnect);
+        };
+      }
     }
-  }, [socketManager.socket, socket, currentUserChat?._id]);
+  }, [
+    socketManager.socket,
+    socket,
+    currentUserChat?._id,
+    socketManager.socket?.connected,
+    socket?.connected,
+    socketReady,
+  ]);
+
+  // Reset socketReady when socket changes
+  useEffect(() => {
+    setSocketReady(false);
+  }, [socketManager.socket, socket]);
 
   // Audio functions for ringing
   const playRingingSound = () => {
