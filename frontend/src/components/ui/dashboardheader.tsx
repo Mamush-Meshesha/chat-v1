@@ -2,7 +2,7 @@ import { FC, useState, useEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
 import { MdVideoCall, MdWifiCalling3 } from "react-icons/md";
 import UnifiedCallDialog from "./unifiedCallDialog";
-import callingService from "../../services/callingService";
+import unifiedCallingService from "../../services/unifiedCallingService";
 
 interface DashboardheaderProps {
   currentUserChat: any;
@@ -21,16 +21,16 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
   const [callType, setCallType] = useState<"audio" | "video">("audio");
   const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
-  const [callData, setCallData] = useState<any>(null);
 
-  // Setup calling service when component mounts
+  // Setup unified calling service when component mounts
   useEffect(() => {
     if (socket) {
-      callingService.setSocket(socket);
+      // The unified calling service handles its own socket initialization
+      console.log("✅ Dashboard header: Unified calling service ready");
     }
 
     return () => {
-      callingService.cleanup();
+      // Cleanup is handled by the unified calling service
     };
   }, [socket]);
 
@@ -48,7 +48,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     console.log("Socket object:", socket);
     console.log("Current user ID:", currentUserId);
     console.log("Current user chat:", currentUserChat);
-    console.log("Calling service socket:", callingService.socketStatus);
+    console.log("Unified calling service ready:", !!unifiedCallingService);
 
     if (socket) {
       console.log("Socket connected:", socket.connected);
@@ -85,25 +85,20 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     setIsIncomingCall(false);
     setIsCallDialogOpen(true);
     setIsCallActive(false); // Don't set active yet - wait for call to connect
-    // Set connecting state for outgoing calls
-
-    // Create call data
-    const callDataObj = {
-      callerId: currentUserId,
-      callerName: "You", // Current user's name
-      receiverId: currentUserChat._id,
-      callType: type,
-      callerAvatar: "/profile.jpg",
-    };
-
-    setCallData(callDataObj);
 
     try {
-      // Initiate the call using calling service
-      const success = await callingService.initiateCall(callDataObj);
+      // Initiate the call using unified calling service (Jitsi)
+      console.log("🎯 Initiating call with unified calling service...");
+      const success = await unifiedCallingService.initiateCall({
+        callerId: currentUserId,
+        callerName: "You", // Current user's name
+        receiverId: currentUserChat._id,
+        callType: type,
+        callerAvatar: "/profile.jpg",
+      });
 
       if (success) {
-        console.log("✅ Call initiated successfully!");
+        console.log("✅ Call initiated successfully with Jitsi!");
         // Keep connecting state - will be updated by call dialog
         console.log("Call dialog state:", {
           isOpen: isCallDialogOpen,
@@ -113,13 +108,11 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       } else {
         console.log("❌ Call initiation failed");
         setIsCallDialogOpen(false);
-
         alert("Failed to initiate call. Please try again.");
       }
     } catch (error) {
       console.error("❌ Error initiating call:", error);
       setIsCallDialogOpen(false);
-
       alert("Error initiating call. Please try again.");
     }
   };
@@ -226,7 +219,6 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           onDecline={handleDeclineCall}
           onEndCall={handleEndCall}
           onCancel={handleCancelCall}
-          callData={callData}
           onCallEnded={() => {
             console.log("🔄 Call ended, refreshing call history...");
             // This will trigger a refresh of call history in the calling component

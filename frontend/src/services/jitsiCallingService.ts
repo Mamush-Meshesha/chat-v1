@@ -374,10 +374,15 @@ class JitsiCallingService {
           currentUser.name,
           callData.callType === "audio"
         );
-        console.log("✅ Successfully joined Jitsi meeting after call acceptance");
+        console.log(
+          "✅ Successfully joined Jitsi meeting after call acceptance"
+        );
         return true;
       } catch (meetingError) {
-        console.error("❌ Failed to join meeting after call acceptance:", meetingError);
+        console.error(
+          "❌ Failed to join meeting after call acceptance:",
+          meetingError
+        );
         this.cleanupCall();
         return false;
       }
