@@ -37,6 +37,16 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     isCallActiveRef.current = isCallActive;
   }, [isCallActive]);
 
+  // Debug state changes
+  useEffect(() => {
+    console.log("🔍 STATE CHANGE DEBUG:", {
+      isCallDialogOpen,
+      outgoingCallData: outgoingCallData ? "exists" : "null",
+      isCallActive,
+      isIncomingCall,
+    });
+  }, [isCallDialogOpen, outgoingCallData, isCallActive, isIncomingCall]);
+
   // Setup unified calling service when component mounts
   useEffect(() => {
     if (socket) {
@@ -329,6 +339,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       };
 
       console.log("✅ Outgoing call data created:", outgoingCallData);
+
+      // Set the outgoing call data in state so the dialog can render
+      setOutgoingCallData(outgoingCallData);
+      console.log("✅ Outgoing call data set in state");
 
       console.log("🎯 Initiating call with unified calling service...");
       console.log(
