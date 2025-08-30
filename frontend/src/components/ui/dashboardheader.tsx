@@ -131,6 +131,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
       // Listen for incoming calls
       preferredSocket.on("incomingCall", (data: any) => {
+        console.log("🎯 INCOMING CALL HANDLER EXECUTED!");
         console.log("📞 INCOMING CALL RECEIVED:", data);
         console.log(
           "📞 Socket instance that received event:",
@@ -189,6 +190,27 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         playRingingSound();
         console.log("🔊 Ringing sound started");
       });
+
+      // ALSO add listener to the other socket to see which one receives events
+      if (socketManager.socket && socketManager.socket !== preferredSocket) {
+        console.log("🔌 Adding backup listener to socketManager.socket");
+        socketManager.socket.on("incomingCall", (data: any) => {
+          console.log("🎯 BACKUP HANDLER EXECUTED on socketManager.socket!");
+          console.log("📞 BACKUP INCOMING CALL RECEIVED:", data);
+        });
+      }
+
+      if (
+        socket &&
+        socket !== preferredSocket &&
+        socket !== socketManager.socket
+      ) {
+        console.log("🔌 Adding backup listener to socket prop");
+        socket.on("incomingCall", (data: any) => {
+          console.log("🎯 BACKUP HANDLER EXECUTED on socket prop!");
+          console.log("📞 BACKUP INCOMING CALL RECEIVED:", data);
+        });
+      }
 
       console.log("✅ incomingCall event listener registered successfully");
 
