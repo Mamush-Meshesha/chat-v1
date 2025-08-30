@@ -254,7 +254,13 @@ class JitsiCallingService {
     }
   }
 
-  // Initialize Jitsi meeting
+  // Set socket from outside the service
+  setSocket(socket: any) {
+    console.log("🔌 Setting socket in Jitsi calling service:", socket?.id);
+    this.socket = socket;
+  }
+
+  // Initialize call
   async initiateCall(
     callData: Omit<JitsiCallData, "callId" | "status" | "roomName">
   ): Promise<boolean> {
@@ -304,6 +310,11 @@ class JitsiCallingService {
       console.log("✅ Room name generated:", roomName);
 
       // Emit initiateCall event to socket server
+      console.log("🔌 About to emit initiateCall event...");
+      console.log("🔌 Socket being used:", this.socket?.id);
+      console.log("🔌 Socket connected:", this.socket?.connected);
+      console.log("🔌 SocketManager socket:", socketManager.getSocket()?.id);
+      
       this.socket.emit("initiateCall", {
         callerId: callData.callerId,
         receiverId: callData.receiverId,

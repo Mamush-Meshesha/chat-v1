@@ -217,13 +217,15 @@ class UnifiedCallingService {
     callData: Omit<
       UnifiedCallData,
       "callId" | "status" | "roomName" | "platform"
-    >
+    >,
+    socket?: any // Add socket parameter
   ): Promise<boolean> {
     try {
       console.log(
         "🚀 UNIFIED CALLING SERVICE: initiateCall called (Jitsi-only)"
       );
       console.log("Call data received:", callData);
+      console.log("🔌 Socket provided:", !!socket);
 
       // Check if Jitsi is available
       if (!this.isJitsiAvailable()) {
@@ -263,6 +265,12 @@ class UnifiedCallingService {
         jitsiApi: undefined,
         callStartTime: Date.now(),
       };
+
+      // Set socket in Jitsi service if provided
+      if (socket) {
+        console.log("🔌 Setting socket in Jitsi service:", socket.id);
+        jitsiCallingService.setSocket(socket);
+      }
 
       // Initiate call using Jitsi
       const success = await jitsiCallingService.initiateCall({

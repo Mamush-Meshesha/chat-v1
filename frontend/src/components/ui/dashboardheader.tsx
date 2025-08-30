@@ -49,12 +49,21 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     };
   }, [socket]);
 
+  // Initialize socketManager if not connected
+  useEffect(() => {
+    if (!socketManager.isConnected() && currentUserChat?._id) {
+      console.log("🔌 Initializing socketManager connection...");
+      socketManager.connect();
+    }
+  }, [currentUserChat?._id]);
+
   // Set up socket event listeners for calling
   useEffect(() => {
     console.log("🔌 DASHBOARD HEADER: Setting up socket event listeners...");
     console.log("🔌 socketManager.socket:", socketManager.socket);
     console.log("🔌 socket prop:", socket);
     console.log("🔌 currentUserChat?._id:", currentUserChat?._id);
+    console.log("🔌 socketManager.isConnected():", socketManager.isConnected());
 
     // Use socketManager.socket if available, otherwise fall back to socket prop
     const activeSocket = socketManager.socket || socket;
@@ -68,6 +77,14 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       // Listen for incoming calls
       activeSocket.on("incomingCall", (data: any) => {
         console.log("📞 INCOMING CALL RECEIVED:", data);
+        console.log("📞 Call data details:", {
+          callId: data.callId,
+          callerId: data.callerId,
+          receiverId: data.receiverId,
+          callType: data.callType,
+          callerName: data.callerName,
+          platform: data.platform,
+        });
 
         // Set incoming call state
         setIsIncomingCall(true);
@@ -87,9 +104,11 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
         // Open call dialog
         setIsCallDialogOpen(true);
+        console.log("🎯 Call dialog opened for incoming call");
 
         // Play ringing sound
         playRingingSound();
+        console.log("🔊 Ringing sound started");
       });
 
       // Listen for call accepted
@@ -97,6 +116,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         console.log("✅ Call accepted:", data);
         setIsCallActive(true);
         setIsIncomingCall(false);
+        console.log("🎯 Call status set to active");
       });
 
       // Listen for call declined
@@ -106,6 +126,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         setIsIncomingCall(false);
         setOutgoingCallData(null);
         stopRingingSound();
+        console.log("🎯 Call dialog closed after decline");
       });
 
       // Listen for call ended
@@ -116,6 +137,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         setIsIncomingCall(false);
         setOutgoingCallData(null);
         stopRingingSound();
+        console.log("🎯 Call dialog closed after call ended");
       });
 
       // Listen for call failed
@@ -125,7 +147,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         setIsIncomingCall(false);
         setOutgoingCallData(null);
         stopRingingSound();
+        console.log("🎯 Call dialog closed after call failed");
       });
+
+      console.log("✅ All socket event listeners set up successfully");
 
       return () => {
         // Clean up event listeners
@@ -135,6 +160,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           activeSocket.off("callDeclined");
           activeSocket.off("callEnded");
           activeSocket.off("callFailed");
+          console.log("🧹 Socket event listeners cleaned up");
         }
       };
     } else {
@@ -197,35 +223,26 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       return;
     }
 
-    if (!currentUserId) {
-      console.log("❌ Current user ID not available");
-      alert("User not authenticated. Please login again.");
+    if (!currentUserChat) {
+      console.log("❌ No current user chat selected");
+      alert("Please select a user to call.");
       return;
     }
 
-    if (!currentUserChat || !currentUserChat._id) {
-      console.log("❌ Current user chat not available");
-      alert("No user selected for call.");
+    if (!unifiedCallingService) {
+      console.log("❌ Unified calling service not available");
+      alert("Calling service not available. Please refresh the page.");
       return;
     }
-
-    console.log("✅ All checks passed, proceeding with call");
-    console.log("Call details:", {
-      callerId: currentUserId,
-      receiverId: currentUserChat._id,
-      callType: type,
-      currentUserChat,
-    });
-
-    setCallType(type);
-    setIsIncomingCall(false);
-    console.log("🎯 Setting call dialog to OPEN");
-    setIsCallDialogOpen(true);
-    setIsCallActive(false); // Don't set active yet - wait for call to connect
 
     try {
-      // Create outgoing call data for the dialog
-      const outgoingCall = {
+      console.log("🎯 Setting call dialog to OPEN");
+      setIsCallDialogOpen(true);
+      setCallType(type);
+      setIsIncomingCall(false);
+
+      // Create outgoing call data
+      const outgoingCallData = {
         callId: `outgoing-${Date.now()}`,
         callerId: currentUserId,
         receiverId: currentUserChat._id,
@@ -234,31 +251,36 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         callerAvatar: "/profile.jpg",
         status: "ringing" as const,
         platform: "jitsi" as const,
-        roomName: "", // Will be generated by the service
       };
-      setOutgoingCallData(outgoingCall);
-      console.log("✅ Outgoing call data created:", outgoingCall);
 
-      // Initiate the call using unified calling service (Jitsi)
+      console.log("✅ Outgoing call data created:", outgoingCallData);
+      setOutgoingCallData(outgoingCallData);
+
       console.log("🎯 Initiating call with unified calling service...");
-      const success = await unifiedCallingService.initiateCall({
-        callerId: currentUserId,
-        callerName: "You", // Current user's name
-        receiverId: currentUserChat._id,
-        callType: type,
-        callerAvatar: "/profile.jpg",
-      });
+      console.log("🔌 About to pass socket to unified calling service:", socket.id);
+      
+      // Pass the socket to the unified calling service
+      const success = await unifiedCallingService.initiateCall(
+        {
+          callerId: currentUserId,
+          receiverId: currentUserChat._id,
+          callType: type,
+          callerName: "You",
+          callerAvatar: "/profile.jpg",
+        },
+        socket // Pass the socket here
+      );
 
       if (success) {
         console.log("✅ Call initiated successfully with Jitsi!");
-        // Keep the dialog open - the unified calling service will handle the call flow
         console.log("Call dialog state after success:", {
-          isOpen: isCallDialogOpenRef.current,
-          isCallActive: isCallActiveRef.current,
+          isOpen: isCallDialogOpen,
+          isCallActive: isCallActive,
           callType: type,
         });
+        console.log("🎯 Call flow: Caller side complete, waiting for receiver...");
       } else {
-        console.log("❌ Call initiation failed");
+        console.log("❌ Failed to initiate call");
         setIsCallDialogOpen(false);
         setOutgoingCallData(null);
         alert("Failed to initiate call. Please try again.");
