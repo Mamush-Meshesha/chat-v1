@@ -86,11 +86,19 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     console.log("🔌 socketManager.isConnected():", socketManager.isConnected());
 
     // Use socketManager.socket if available, otherwise fall back to socket prop
+    // IMPORTANT: Use the socket that will actually receive events
     const activeSocket = socketManager.socket || socket;
+
+    // If both sockets exist, prefer the one that's connected and will receive events
+    const preferredSocket = socketManager.socket?.connected
+      ? socketManager.socket
+      : socket?.connected
+      ? socket
+      : activeSocket;
 
     // Check if socket is connected and ready
     const isSocketReady =
-      activeSocket && activeSocket.connected && currentUserChat?._id;
+      preferredSocket && preferredSocket.connected && currentUserChat?._id;
 
     console.log("🔌 Socket ready check:", {
       activeSocket: !!activeSocket,
@@ -99,15 +107,39 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       isSocketReady,
     });
 
+    // IMPORTANT: Ensure we're using the same socket instance that will receive events
+    console.log("🔌 Socket instance selection:", {
+      socketManagerSocket: socketManager.socket?.id,
+      socketProp: socket?.id,
+      selectedSocket: activeSocket?.id,
+      socketManagerConnected: socketManager.socket?.connected,
+      socketPropConnected: socket?.connected,
+    });
+
     if (isSocketReady) {
       console.log(
         "🔌 Setting up socket event listeners for calling with socket:",
-        activeSocket.id
+        preferredSocket.id
       );
+      console.log("🔌 Socket instance details:", {
+        socketManagerSocketId: socketManager.socket?.id,
+        socketPropId: socket?.id,
+        activeSocketId: preferredSocket.id,
+        activeSocketConnected: preferredSocket.connected,
+      });
 
       // Listen for incoming calls
-      activeSocket.on("incomingCall", (data: any) => {
+      preferredSocket.on("incomingCall", (data: any) => {
         console.log("📞 INCOMING CALL RECEIVED:", data);
+        console.log(
+          "📞 Socket instance that received event:",
+          preferredSocket.id
+        );
+        console.log(
+          "📞 Current socketManager.socket ID:",
+          socketManager.socket?.id
+        );
+        console.log("📞 Current socket prop ID:", socket?.id);
         console.log("📞 Call data details:", {
           callId: data.callId,
           callerId: data.callerId,
@@ -160,7 +192,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       console.log("✅ incomingCall event listener registered successfully");
 
       // Listen for call accepted
-      activeSocket.on("callAccepted", (data: any) => {
+      preferredSocket.on("callAccepted", (data: any) => {
         console.log("✅ Call accepted:", data);
         console.log("🔍 Current call state:", {
           isIncomingCall,
@@ -196,7 +228,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       });
 
       // Listen for call connected (when call is fully established)
-      activeSocket.on("callConnected", (data: any) => {
+      preferredSocket.on("callConnected", (data: any) => {
         console.log("🎉 Call connected:", data);
         console.log("🔍 Call connected state:", {
           isIncomingCall,
@@ -226,7 +258,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       });
 
       // Listen for call declined
-      activeSocket.on("callDeclined", (data: any) => {
+      preferredSocket.on("callDeclined", (data: any) => {
         console.log("❌ Call declined:", data);
         setIsCallDialogOpen(false);
         setIsIncomingCall(false);
@@ -236,7 +268,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       });
 
       // Listen for call ended
-      activeSocket.on("callEnded", (data: any) => {
+      preferredSocket.on("callEnded", (data: any) => {
         console.log("🔚 Call ended:", data);
         setIsCallDialogOpen(false);
         setIsCallActive(false);
@@ -247,7 +279,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       });
 
       // Listen for call failed
-      activeSocket.on("callFailed", (data: any) => {
+      preferredSocket.on("callFailed", (data: any) => {
         console.log("💥 Call failed:", data);
         setIsCallDialogOpen(false);
         setIsIncomingCall(false);
@@ -260,13 +292,13 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
       return () => {
         // Clean up event listeners
-        if (activeSocket) {
-          activeSocket.off("incomingCall");
-          activeSocket.off("callAccepted");
-          activeSocket.off("callConnected");
-          activeSocket.off("callDeclined");
-          activeSocket.off("callEnded");
-          activeSocket.off("callFailed");
+        if (preferredSocket) {
+          preferredSocket.off("incomingCall");
+          preferredSocket.off("callAccepted");
+          preferredSocket.off("callConnected");
+          preferredSocket.off("callDeclined");
+          preferredSocket.off("callEnded");
+          preferredSocket.off("callFailed");
           console.log("🧹 Socket event listeners cleaned up");
         }
       };
@@ -277,7 +309,11 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       console.log("  - socket connected:", activeSocket?.connected);
 
       // If socket exists but not connected, listen for connection
-      if (activeSocket && !activeSocket.connected && currentUserChat?._id) {
+      if (
+        preferredSocket &&
+        !preferredSocket.connected &&
+        currentUserChat?._id
+      ) {
         console.log("🔄 Socket not connected, waiting for connection...");
 
         const onConnect = () => {
@@ -286,10 +322,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           setSocketReady(true);
         };
 
-        activeSocket.on("connect", onConnect);
+        preferredSocket.on("connect", onConnect);
 
         return () => {
-          activeSocket.off("connect", onConnect);
+          preferredSocket.off("connect", onConnect);
         };
       }
     }
