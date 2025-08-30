@@ -299,7 +299,7 @@ class UnifiedCallingService {
 
       console.log("✅ Active call set:", this.activeCall);
 
-      // Accept call using Jitsi
+      // Accept call using Jitsi (this will automatically join the meeting)
       const jitsiCallData = {
         callId: callData.callId,
         callerId: callData.callerId,
@@ -310,15 +310,15 @@ class UnifiedCallingService {
         status: callData.status,
         roomName: callData.roomName || "",
       };
-
+      
       console.log("🎯 Calling Jitsi service with data:", jitsiCallData);
       console.log("🎯 Jitsi service instance:", jitsiCallingService);
-
+      
       const success = await jitsiCallingService.acceptCall(jitsiCallData);
       console.log("🎯 Jitsi service acceptCall result:", success);
 
       if (success) {
-        console.log("✅ Call accepted successfully using Jitsi");
+        console.log("✅ Call accepted and meeting joined successfully using Jitsi");
         return true;
       } else {
         console.error("❌ Jitsi service failed to accept call");

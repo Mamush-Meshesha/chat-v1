@@ -360,7 +360,27 @@ class JitsiCallingService {
 
       console.log("✅ acceptCall event emitted to socket server");
 
-      return true;
+      // Get current user info for Jitsi
+      const currentUser = this.getCurrentUserInfo();
+      if (!currentUser) {
+        throw new Error("Failed to get current user info");
+      }
+
+      // Automatically join the meeting after accepting
+      console.log("🎯 Auto-joining Jitsi meeting after call acceptance...");
+      try {
+        await this.joinMeeting(
+          callData.roomName,
+          currentUser.name,
+          callData.callType === "audio"
+        );
+        console.log("✅ Successfully joined Jitsi meeting after call acceptance");
+        return true;
+      } catch (meetingError) {
+        console.error("❌ Failed to join meeting after call acceptance:", meetingError);
+        this.cleanupCall();
+        return false;
+      }
     } catch (error) {
       console.error("Failed to accept call:", error);
       this.cleanupCall();

@@ -143,44 +143,12 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
       const success = await unifiedCallingService.acceptCall(callData);
 
       if (success) {
-        console.log("✅ Call accepted successfully, now joining meeting...");
-        // Join the meeting if it's a Jitsi call
-        if (callData.platform === "jitsi" && callData.roomName) {
-          const currentUser = JSON.parse(
-            localStorage.getItem("authUser") || "{}"
-          );
-          const displayName = currentUser.name || "User";
-
-          console.log("🎯 Joining Jitsi meeting:", {
-            roomName: callData.roomName,
-            displayName,
-            isAudioOnly: callData.callType === "audio",
-          });
-
-          try {
-            await unifiedCallingService.joinMeeting(
-              callData.roomName,
-              displayName,
-              callData.callType === "audio"
-            );
-
-            console.log("✅ Jitsi meeting joined successfully");
-            // Update state to show call is active
-            setIsConnecting(false);
-            setIsCallActive(true);
-            setCurrentPlatform("jitsi");
-            callStartTimeRef.current = Date.now();
-          } catch (meetingError) {
-            console.error("❌ Failed to join Jitsi meeting:", meetingError);
-            setIsConnecting(false);
-            // Handle meeting join failure
-            alert("Failed to join meeting. Please try again.");
-            return;
-          }
-        } else {
-          console.warn("⚠️ No room name or platform info for Jitsi call");
-          setIsConnecting(false);
-        }
+        console.log("✅ Call accepted and meeting joined successfully!");
+        // The Jitsi meeting is now automatically joined, so update state
+        setIsConnecting(false);
+        setIsCallActive(true);
+        setCurrentPlatform("jitsi");
+        callStartTimeRef.current = Date.now();
 
         if (onAccept) {
           onAccept();
@@ -188,10 +156,12 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
       } else {
         console.error("❌ Failed to accept call");
         setIsConnecting(false);
+        alert("Failed to accept call. Please try again.");
       }
     } catch (error) {
       console.error("❌ Error accepting call:", error);
       setIsConnecting(false);
+      alert("Error accepting call. Please try again.");
     }
   };
 
