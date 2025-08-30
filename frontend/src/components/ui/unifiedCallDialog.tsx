@@ -34,6 +34,8 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
   callData,
   onCallEnded,
 }) => {
+  console.log("🎯 UnifiedCallDialog RENDER:", { isOpen, callType, callerName, isIncoming, callData });
+
   const [callDuration, setCallDuration] = useState(0);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);

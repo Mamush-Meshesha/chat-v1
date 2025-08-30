@@ -237,37 +237,40 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
       {/* Call Dialog */}
       {isCallDialogOpen && outgoingCallData && (
-        <UnifiedCallDialog
-          isOpen={isCallDialogOpen}
-          onClose={() => {
-            console.log("🔒 Call dialog closing...");
-            setIsCallDialogOpen(false);
-            setIsCallActive(false);
-            setOutgoingCallData(null);
-          }}
-          callType={callType}
-          callerName={currentUserChat.name || "Unknown"}
-          callerAvatar="/profile.jpg"
-          isIncoming={isIncomingCall}
-          onAccept={handleAcceptCall}
-          onDecline={handleDeclineCall}
-          onEndCall={handleEndCall}
-          onCancel={handleCancelCall}
-          callData={outgoingCallData}
-          onCallEnded={() => {
-            console.log("🔄 Call ended, refreshing call history...");
-            setIsCallDialogOpen(false);
-            setOutgoingCallData(null);
-            // This will trigger a refresh of call history in the calling component
-            // You can add a callback prop to refresh call history if needed
-          }}
-        />
+        <>
+          {console.log("🎯 RENDERING CALL DIALOG:", { isCallDialogOpen, outgoingCallData })}
+          <UnifiedCallDialog
+            isOpen={isCallDialogOpen}
+            onClose={() => {
+              console.log("🔒 Call dialog closing...");
+              setIsCallDialogOpen(false);
+              setIsCallActive(false);
+              setOutgoingCallData(null);
+            }}
+            callType={callType}
+            callerName={currentUserChat.name || "Unknown"}
+            callerAvatar="/profile.jpg"
+            isIncoming={isIncomingCall}
+            onAccept={handleAcceptCall}
+            onDecline={handleDeclineCall}
+            onEndCall={handleEndCall}
+            onCancel={handleCancelCall}
+            callData={outgoingCallData}
+            onCallEnded={() => {
+              console.log("🔄 Call ended, refreshing call history...");
+              setIsCallDialogOpen(false);
+              setOutgoingCallData(null);
+              // This will trigger a refresh of call history in the calling component
+              // You can add a callback prop to refresh call history if needed
+            }}
+          />
+        </>
       )}
 
       {/* Debug info */}
       <div className="text-xs text-gray-500 mt-2">
-        Debug: isCallDialogOpen={isCallDialogOpen.toString()},
-        outgoingCallData={outgoingCallData ? "exists" : "null"}
+        Debug: isCallDialogOpen={isCallDialogOpen.toString()}, outgoingCallData=
+        {outgoingCallData ? "exists" : "null"}
       </div>
     </div>
   );
