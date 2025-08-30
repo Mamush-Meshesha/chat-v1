@@ -30,12 +30,23 @@ const CallingInterface: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // REMOVED: This was intercepting incoming call events before dashboardheader.tsx could handle them
-    // unifiedCallingService.onIncomingCall = (data) => {
-    //   console.log("📞 Incoming call received:", data);
-    //   setIncomingCall(data);
-    //   setShowIncomingCall(true);
-    // };
+    // RESTORED: This is necessary for the calling system to work
+    unifiedCallingService.onIncomingCall = (data) => {
+      console.log("📞 Incoming call received:", data);
+      console.log("🔍 Room name in incoming call:", data.roomName);
+
+      // Ensure roomName is included in the call data
+      const callDataWithRoom = {
+        ...data,
+        roomName:
+          data.roomName ||
+          `chat-${data.callerId}-${data.receiverId}-${Date.now()}`,
+      };
+
+      console.log("🔍 Call data with roomName:", callDataWithRoom);
+      setIncomingCall(callDataWithRoom);
+      setShowIncomingCall(true);
+    };
 
     unifiedCallingService.onCallConnected = (data) => {
       console.log("🎉 Call connected:", data);
@@ -62,7 +73,7 @@ const CallingInterface: React.FC = () => {
     };
 
     return () => {
-      // unifiedCallingService.onIncomingCall = undefined; // REMOVED: No longer setting this callback
+      unifiedCallingService.onIncomingCall = undefined; // RESTORED: This callback is necessary
       unifiedCallingService.onCallConnected = undefined;
       unifiedCallingService.onCallEnded = undefined;
       unifiedCallingService.onCallFailed = undefined;
@@ -134,6 +145,12 @@ const CallingInterface: React.FC = () => {
 
   const handleAcceptIncomingCall = () => {
     if (incomingCall) {
+      console.log("🔄 Accepting incoming call with data:", incomingCall);
+      console.log("🔍 Room name in incoming call:", incomingCall.roomName);
+      
+      // Accept the call through the unified calling service
+      unifiedCallingService.acceptCall(incomingCall);
+      
       setShowIncomingCall(false);
       setShowCallDialog(true);
     }
