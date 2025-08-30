@@ -31,6 +31,7 @@ const generateRoomName = (callerId, receiverId) => {
 
 io.on("connection", (socket) => {
   console.log("✅ Socket connected:", socket.id);
+  console.log("📊 Total active connections:", io.engine.clientsCount);
 
   // Add user to socket
   socket.on("addUser", (userId, user) => {
@@ -55,7 +56,10 @@ io.on("connection", (socket) => {
     }
 
     console.log("📊 Active users count:", activeUsers.length);
-    console.log("📋 Active users:", activeUsers.map(u => ({ userId: u.userId, socketId: u.socketId })));
+    console.log(
+      "📋 Active users:",
+      activeUsers.map((u) => ({ userId: u.userId, socketId: u.socketId }))
+    );
 
     // Emit updated users list to all clients
     io.emit("getUsers", activeUsers);
@@ -102,13 +106,14 @@ io.on("connection", (socket) => {
     console.log("📞 Call initiated:", data);
     console.log("🔍 Looking for receiver:", data.receiverId);
     console.log("📊 Active users:", activeUsers);
-    
+    console.log("🔌 Caller socket ID:", socket.id);
+
     const receiver = getUser(data.receiverId);
 
     if (receiver) {
       console.log("✅ Receiver found:", receiver);
       console.log("🔌 Receiver socket ID:", receiver.socketId);
-      
+
       // Check if user is already in a call
       if (getActiveCall(data.receiverId)) {
         console.log("❌ Receiver is busy in another call");
@@ -126,7 +131,7 @@ io.on("connection", (socket) => {
       // Store call data
       const callData = {
         callId:
-          data.callId || `${data.callerId}-${data.receiverId}-${Date.now()}`,
+          data.callId || `${data.callerId}-${data.callerId}-${Date.now()}`,
         callerId: data.callerId,
         receiverId: data.receiverId,
         callType: data.callType,
@@ -142,7 +147,10 @@ io.on("connection", (socket) => {
       activeCalls.set(data.receiverId, callData);
 
       console.log("💾 Call data stored:", callData);
-      console.log("📤 Emitting incomingCall to receiver socket:", receiver.socketId);
+      console.log(
+        "📤 Emitting incomingCall to receiver socket:",
+        receiver.socketId
+      );
 
       // Emit incoming call to receiver
       io.to(receiver.socketId).emit("incomingCall", callData);
@@ -152,11 +160,57 @@ io.on("connection", (socket) => {
       console.log("✅ Room name:", callData.roomName);
     } else {
       console.log("❌ Receiver not found in active users");
-      console.log("❌ Available user IDs:", activeUsers.map(u => u.userId));
+      console.log(
+        "❌ Available user IDs:",
+        activeUsers.map((u) => u.userId)
+      );
       socket.emit("callFailed", {
         reason: "Receiver not found",
         receiverId: data.receiverId,
       });
+    }
+  });
+
+  // Handle socket disconnection
+  socket.on("disconnect", (reason) => {
+    console.log("❌ Socket disconnected:", socket.id, "Reason:", reason);
+
+    // Remove user from active users
+    const userIndex = activeUsers.findIndex((u) => u.socketId === socket.id);
+    if (userIndex !== -1) {
+      const disconnectedUser = activeUsers[userIndex];
+      console.log("👤 User disconnected:", disconnectedUser.userId);
+      activeUsers.splice(userIndex, 1);
+
+      // Clean up any active calls for this user
+      const userCalls = Array.from(activeCalls.entries())
+        .filter(([userId, callData]) => userId === disconnectedUser.userId)
+        .map(([userId, callData]) => callData);
+
+      userCalls.forEach((callData) => {
+        console.log(
+          "🧹 Cleaning up call for disconnected user:",
+          callData.callId
+        );
+        activeCalls.delete(callData.callerId);
+        activeCalls.delete(callData.receiverId);
+
+        // Notify the other party that the call ended
+        const otherUserId =
+          callData.callerId === disconnectedUser.userId
+            ? callData.receiverId
+            : callData.callerId;
+        const otherUser = getUser(otherUserId);
+        if (otherUser) {
+          io.to(otherUser.socketId).emit("callEnded", {
+            ...callData,
+            reason: "User disconnected",
+          });
+        }
+      });
+
+      console.log("📊 Active users after cleanup:", activeUsers.length);
+      console.log("📊 Active calls after cleanup:", activeCalls.size);
     }
   });
 
