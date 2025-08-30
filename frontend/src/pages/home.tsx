@@ -106,11 +106,17 @@ const Home: FC<HomeProps> = () => {
               socket.current?.connected
             );
             console.log("✅ HOME: Socket setup complete");
+            console.log("🔍 Home: Auth state check:", {
+              isAuthenticated,
+              authUser: authUser?._id,
+            });
+
             // Add user immediately after connection
             if (authUser?._id) {
               console.log("🔄 Home: Adding user to socket:", authUser._id);
               console.log("🔄 Home: User data being sent:", authUser);
               socket.current?.emit("addUser", authUser._id, authUser);
+              console.log("✅ Home: addUser event emitted to socket server");
             } else {
               console.log(
                 "❌ Home: No authUser._id available when socket connected"

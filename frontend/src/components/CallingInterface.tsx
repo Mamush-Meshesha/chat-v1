@@ -147,10 +147,10 @@ const CallingInterface: React.FC = () => {
     if (incomingCall) {
       console.log("🔄 Accepting incoming call with data:", incomingCall);
       console.log("🔍 Room name in incoming call:", incomingCall.roomName);
-      
+
       // Accept the call through the unified calling service
       unifiedCallingService.acceptCall(incomingCall);
-      
+
       setShowIncomingCall(false);
       setShowCallDialog(true);
     }
