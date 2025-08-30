@@ -191,7 +191,7 @@ const Home: FC<HomeProps> = () => {
                 callerId: data.callerId,
                 receiverId: authUser._id, // Add the missing receiverId
                 callType: data.callType,
-                callerName: data.callName || "Unknown",
+                callerName: data.callerName || "Unknown",
                 callerAvatar: data.callerAvatar,
                 status: "ringing" as const, // Add the missing status
                 platform: "jitsi" as const, // Add the platform property
