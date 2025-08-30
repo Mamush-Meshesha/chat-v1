@@ -51,17 +51,28 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
   // Set up socket event listeners for calling
   useEffect(() => {
-    if (socketManager.socket && currentUserChat?._id) {
-      console.log("🔌 Setting up socket event listeners for calling...");
+    console.log("🔌 DASHBOARD HEADER: Setting up socket event listeners...");
+    console.log("🔌 socketManager.socket:", socketManager.socket);
+    console.log("🔌 socket prop:", socket);
+    console.log("🔌 currentUserChat?._id:", currentUserChat?._id);
+
+    // Use socketManager.socket if available, otherwise fall back to socket prop
+    const activeSocket = socketManager.socket || socket;
+
+    if (activeSocket && currentUserChat?._id) {
+      console.log(
+        "🔌 Setting up socket event listeners for calling with socket:",
+        activeSocket.id
+      );
 
       // Listen for incoming calls
-      socketManager.socket.on("incomingCall", (data) => {
+      activeSocket.on("incomingCall", (data: any) => {
         console.log("📞 INCOMING CALL RECEIVED:", data);
-        
+
         // Set incoming call state
         setIsIncomingCall(true);
         setCallType(data.callType);
-        
+
         // Set incoming call data
         setOutgoingCallData({
           callId: data.callId,
@@ -71,25 +82,25 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
           callerName: data.callerName || "Unknown",
           callerAvatar: data.callerAvatar || "/profile.jpg",
           platform: data.platform || "jitsi",
-          status: "ringing"
+          status: "ringing",
         });
-        
+
         // Open call dialog
         setIsCallDialogOpen(true);
-        
+
         // Play ringing sound
         playRingingSound();
       });
 
       // Listen for call accepted
-      socketManager.socket.on("callAccepted", (data) => {
+      activeSocket.on("callAccepted", (data: any) => {
         console.log("✅ Call accepted:", data);
         setIsCallActive(true);
         setIsIncomingCall(false);
       });
 
       // Listen for call declined
-      socketManager.socket.on("callDeclined", (data) => {
+      activeSocket.on("callDeclined", (data: any) => {
         console.log("❌ Call declined:", data);
         setIsCallDialogOpen(false);
         setIsIncomingCall(false);
@@ -98,7 +109,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       });
 
       // Listen for call ended
-      socketManager.socket.on("callEnded", (data) => {
+      activeSocket.on("callEnded", (data: any) => {
         console.log("🔚 Call ended:", data);
         setIsCallDialogOpen(false);
         setIsCallActive(false);
@@ -108,7 +119,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       });
 
       // Listen for call failed
-      socketManager.socket.on("callFailed", (data) => {
+      activeSocket.on("callFailed", (data: any) => {
         console.log("💥 Call failed:", data);
         setIsCallDialogOpen(false);
         setIsIncomingCall(false);
@@ -118,16 +129,20 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
 
       return () => {
         // Clean up event listeners
-        if (socketManager.socket) {
-          socketManager.socket.off("incomingCall");
-          socketManager.socket.off("callAccepted");
-          socketManager.socket.off("callDeclined");
-          socketManager.socket.off("callEnded");
-          socketManager.socket.off("callFailed");
+        if (activeSocket) {
+          activeSocket.off("incomingCall");
+          activeSocket.off("callAccepted");
+          activeSocket.off("callDeclined");
+          activeSocket.off("callEnded");
+          activeSocket.off("callFailed");
         }
       };
+    } else {
+      console.log("❌ Cannot set up socket event listeners:");
+      console.log("  - activeSocket:", !!activeSocket);
+      console.log("  - currentUserChat?._id:", !!currentUserChat?._id);
     }
-  }, [socketManager.socket, currentUserChat?._id]);
+  }, [socketManager.socket, socket, currentUserChat?._id]);
 
   // Audio functions for ringing
   const playRingingSound = () => {
@@ -345,7 +360,10 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       {/* Call Dialog */}
       {isCallDialogOpen && outgoingCallData && (
         <>
-          {console.log("🎯 RENDERING CALL DIALOG:", { isCallDialogOpen, outgoingCallData })}
+          {console.log("🎯 RENDERING CALL DIALOG:", {
+            isCallDialogOpen,
+            outgoingCallData,
+          })}
           <UnifiedCallDialog
             isOpen={isCallDialogOpen}
             onClose={() => {
