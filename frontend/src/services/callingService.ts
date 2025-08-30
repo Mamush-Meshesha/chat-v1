@@ -207,8 +207,6 @@ class CallingService {
       // Force load the audio files
       this.callingSound.load();
       this.ringingSound.load();
-
-      
     } catch (error: any) {
       console.error("❌ CRITICAL ERROR in initializeCallSounds:", error);
       console.error("❌ Error stack:", error.stack);
@@ -216,7 +214,6 @@ class CallingService {
   }
 
   async setSocket(socket: Socket) {
-   
     // Clean up previous socket listeners if they exist
     if (this.socket) {
       console.log("🔌 CALLING SERVICE: Cleaning up previous socket...");
@@ -1097,93 +1094,97 @@ class CallingService {
   }
 
   private createPeerConnection(): RTCPeerConnection {
-  const configuration: RTCConfiguration = {
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" },
+    const configuration: RTCConfiguration = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
 
-      // Free TURN server (openrelay)
-      {
-        urls: [
-          "turn:openrelay.metered.ca:80",
-          "turn:openrelay.metered.ca:443",
-          "turn:openrelay.metered.ca:443?transport=tcp"
-        ],
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-    ],
-    iceCandidatePoolSize: 10,
-  };
+        // Free TURN server (openrelay)
+        {
+          urls: [
+            "turn:openrelay.metered.ca:80",
+            "turn:openrelay.metered.ca:443",
+            "turn:openrelay.metered.ca:443?transport=tcp",
+          ],
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+      ],
+      iceCandidatePoolSize: 10,
+    };
 
-  console.log("🔄 Creating PeerConnection with config:", configuration);
-  const pc = new RTCPeerConnection(configuration);
+    console.log("🔄 Creating PeerConnection with config:", configuration);
+    const pc = new RTCPeerConnection(configuration);
 
-  // Connection state monitoring
-  pc.onconnectionstatechange = () => {
-    console.log("📡 Connection state:", pc.connectionState);
-  };
-  pc.oniceconnectionstatechange = () => {
-    console.log("🧊 ICE state:", pc.iceConnectionState);
-    if (pc.iceConnectionState === "failed") {
-      console.error("❌ ICE failed! Likely NAT/firewall or TURN issue.");
-    }
-  };
+    // Connection state monitoring
+    pc.onconnectionstatechange = () => {
+      console.log("📡 Connection state:", pc.connectionState);
+    };
+    pc.oniceconnectionstatechange = () => {
+      console.log("🧊 ICE state:", pc.iceConnectionState);
+      if (pc.iceConnectionState === "failed") {
+        console.error("❌ ICE failed! Likely NAT/firewall or TURN issue.");
+      }
+    };
 
-  // Candidate discovery
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log("🌐 ICE candidate:", {
-        candidate: event.candidate.candidate,
-        type: event.candidate.type,
-        protocol: event.candidate.protocol,
-        relayOnly: event.candidate.type === "relay",
+    // Candidate discovery
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("🌐 ICE candidate:", {
+          candidate: event.candidate.candidate,
+          type: event.candidate.type,
+          protocol: event.candidate.protocol,
+          relayOnly: event.candidate.type === "relay",
+        });
+
+        if (this.socket && this.activeCall) {
+          this.sendIceCandidate(event.candidate);
+        }
+      } else {
+        console.log("✅ ICE candidate gathering complete.");
+      }
+    };
+
+    this.startConnectionQualityMonitoring(pc);
+    // Track handling
+    pc.ontrack = (event) => {
+      console.log("🎵 Remote track received:", {
+        kind: event.track.kind,
+        enabled: event.track.enabled,
+        readyState: event.track.readyState,
+        label: event.track.label,
       });
 
-      if (this.socket && this.activeCall) {
-        this.sendIceCandidate(event.candidate);
+      if (!this.remoteStream) {
+        this.remoteStream = new MediaStream();
       }
-    } else {
-      console.log("✅ ICE candidate gathering complete.");
-    }
-  };
+      this.remoteStream.addTrack(event.track);
 
-  this.startConnectionQualityMonitoring(pc);
-  // Track handling
-  pc.ontrack = (event) => {
-    console.log("🎵 Remote track received:", {
-      kind: event.track.kind,
-      enabled: event.track.enabled,
-      readyState: event.track.readyState,
-      label: event.track.label,
-    });
+      // Attach immediately for testing
+      const audioElement = document.getElementById(
+        "remoteAudio"
+      ) as HTMLAudioElement;
+      if (audioElement) {
+        audioElement.srcObject = this.remoteStream;
+        audioElement
+          .play()
+          .catch((err) =>
+            console.error("⚠️ Failed to autoplay remote audio:", err)
+          );
+      }
 
-    if (!this.remoteStream) {
-      this.remoteStream = new MediaStream();
-    }
-    this.remoteStream.addTrack(event.track);
+      console.log("🔊 Current remote stream tracks:", {
+        audio: this.remoteStream.getAudioTracks().length,
+        video: this.remoteStream.getVideoTracks().length,
+      });
+    };
 
-    // Attach immediately for testing
-    const audioElement = document.getElementById("remoteAudio") as HTMLAudioElement;
-    if (audioElement) {
-      audioElement.srcObject = this.remoteStream;
-      audioElement.play().catch((err) =>
-        console.error("⚠️ Failed to autoplay remote audio:", err)
-      );
-    }
-
-    console.log("🔊 Current remote stream tracks:", {
-      audio: this.remoteStream.getAudioTracks().length,
-      video: this.remoteStream.getVideoTracks().length,
-    });
-  };
-
-  console.log("✅ PeerConnection created");
-  return pc;
-}
+    console.log("✅ PeerConnection created");
+    return pc;
+  }
 
   // private createPeerConnection(): RTCPeerConnection {
   //   const configuration = {
