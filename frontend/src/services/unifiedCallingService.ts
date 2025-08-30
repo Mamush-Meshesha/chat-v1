@@ -76,36 +76,54 @@ class UnifiedCallingService {
   }
 
   private setupServiceCallbacks() {
+    console.log("🔧 Setting up Jitsi service callbacks...");
+    
     // Set up Jitsi service callbacks
     jitsiCallingService.onCallConnected = (data) => {
+      console.log("🎉 UNIFIED SERVICE: Jitsi call connected callback triggered:", data);
       if (this.onCallConnected) {
+        console.log("🎉 Forwarding call connected to component...");
         this.onCallConnected(data);
+      } else {
+        console.warn("⚠️ No onCallConnected callback set in unified service");
       }
     };
 
     jitsiCallingService.onCallEnded = (data) => {
+      console.log("🎵 UNIFIED SERVICE: Jitsi call ended callback triggered:", data);
       if (this.onCallEnded) {
+        console.log("🎵 Forwarding call ended to component...");
         this.onCallEnded(data);
+      } else {
+        console.warn("⚠️ No onCallEnded callback set in unified service");
       }
     };
 
     jitsiCallingService.onCallFailed = (data) => {
+      console.log("💥 UNIFIED SERVICE: Jitsi call failed callback triggered:", data);
       if (this.onCallFailed) {
+        console.log("💥 Forwarding call failed to component...");
         this.onCallFailed(data);
+      } else {
+        console.warn("⚠️ No onCallFailed callback set in unified service");
       }
     };
 
     jitsiCallingService.onRemoteStream = (stream) => {
+      console.log("🎵 UNIFIED SERVICE: Remote stream received:", stream);
       if (this.onRemoteStream) {
         this.onRemoteStream(stream);
       }
     };
 
     jitsiCallingService.onIncomingCall = (data) => {
+      console.log("📞 UNIFIED SERVICE: Incoming call received:", data);
       if (this.onIncomingCall) {
         this.onIncomingCall(data);
       }
     };
+
+    console.log("✅ Jitsi service callbacks set up successfully");
   }
 
   // Create a call record in the backend
@@ -284,10 +302,12 @@ class UnifiedCallingService {
         status: callData.status,
         roomName: callData.roomName || "",
       };
-
+      
       console.log("🎯 Calling Jitsi service with data:", jitsiCallData);
-
+      console.log("🎯 Jitsi service instance:", jitsiCallingService);
+      
       const success = await jitsiCallingService.acceptCall(jitsiCallData);
+      console.log("🎯 Jitsi service acceptCall result:", success);
 
       if (success) {
         console.log("✅ Call accepted successfully using Jitsi");
