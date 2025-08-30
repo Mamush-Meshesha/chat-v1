@@ -90,30 +90,31 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     const activeSocket = socketManager.socket || socket;
 
     // If both sockets exist, prefer the one that's connected and will receive events
+    // CRITICAL: Use the socket that will actually receive events, not just any connected socket
     const preferredSocket = socketManager.socket?.connected
       ? socketManager.socket
       : socket?.connected
       ? socket
       : activeSocket;
 
+    // IMPORTANT: Ensure we're using the same socket instance that will receive events
+    console.log("🔌 Socket instance selection:", {
+      socketManagerSocket: socketManager.socket?.id,
+      socketProp: socket?.id,
+      selectedSocket: preferredSocket?.id,
+      socketManagerConnected: socketManager.socket?.connected,
+      socketPropConnected: socket?.connected,
+    });
+
     // Check if socket is connected and ready
     const isSocketReady =
       preferredSocket && preferredSocket.connected && currentUserChat?._id;
 
     console.log("🔌 Socket ready check:", {
-      activeSocket: !!activeSocket,
-      connected: activeSocket?.connected,
+      activeSocket: !!preferredSocket,
+      connected: preferredSocket?.connected,
       currentUserChat: !!currentUserChat?._id,
       isSocketReady,
-    });
-
-    // IMPORTANT: Ensure we're using the same socket instance that will receive events
-    console.log("🔌 Socket instance selection:", {
-      socketManagerSocket: socketManager.socket?.id,
-      socketProp: socket?.id,
-      selectedSocket: activeSocket?.id,
-      socketManagerConnected: socketManager.socket?.connected,
-      socketPropConnected: socket?.connected,
     });
 
     if (isSocketReady) {
