@@ -12,7 +12,7 @@ interface UnifiedCallDialogProps {
   callType: "audio" | "video";
   callerName: string;
   callerAvatar?: string;
-  isIncoming?: boolean;
+  isIncoming: boolean;
   onAccept?: () => void;
   onDecline?: () => void;
   onEndCall?: () => void;
@@ -27,7 +27,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
   callType,
   callerName,
   callerAvatar,
-  isIncoming = false,
+  isIncoming,
   onAccept,
   onDecline,
   onEndCall,
@@ -43,20 +43,16 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
     callData,
   });
 
-  const [callDuration, setCallDuration] = useState(0);
-  const [isCallActive, setIsCallActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [currentPlatform, setCurrentPlatform] = useState<"jitsi" | null>(null);
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [currentPlatform, setCurrentPlatform] = useState<string | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const [callStartTime, setCallStartTime] = useState<number | null>(null);
+  const jitsiContainerRef = useRef<HTMLDivElement>(null);
   const [platformStats, setPlatformStats] = useState(
     unifiedCallingService.getPlatformStats()
   );
   const [showPlatformInfo, setShowPlatformInfo] = useState(false);
-
-  const jitsiContainerRef = useRef<HTMLDivElement>(null);
-  const callStartTimeRef = useRef<number | null>(null);
-  const durationIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
 
   // Update platform stats when they change
   useEffect(() => {
@@ -77,26 +73,31 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
 
   // Handle call duration timer
   useEffect(() => {
-    if (isCallActive && callStartTimeRef.current) {
-      durationIntervalRef.current = setInterval(() => {
-        const elapsed = Math.floor(
-          (Date.now() - callStartTimeRef.current!) / 1000
-        );
-        setCallDuration(elapsed);
+    let interval: NodeJS.Timeout;
+
+    if (isCallActive && callStartTime) {
+      interval = setInterval(() => {
+        const duration = Math.floor((Date.now() - callStartTime) / 1000);
+        setCallDuration(duration);
       }, 1000);
-    } else {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-        durationIntervalRef.current = null;
-      }
     }
 
     return () => {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-      }
+      if (interval) clearInterval(interval);
     };
-  }, [isCallActive]);
+  }, [isCallActive, callStartTime]);
+
+  // Start call timer when call becomes active
+  useEffect(() => {
+    if (isCallActive && !callStartTime) {
+      setCallStartTime(Date.now());
+      console.log("⏱️ Call timer started");
+    } else if (!isCallActive) {
+      setCallStartTime(null);
+      setCallDuration(0);
+      console.log("⏱️ Call timer reset");
+    }
+  }, [isCallActive, callStartTime]);
 
   // Set up unified calling service callbacks
   useEffect(() => {
@@ -105,7 +106,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
       setIsCallActive(true);
       setIsConnecting(false);
       setCurrentPlatform("jitsi");
-      callStartTimeRef.current = Date.now();
+      // callStartTimeRef.current = Date.now(); // Removed as per edit hint
     };
 
     unifiedCallingService.onCallEnded = (data) => {
@@ -113,7 +114,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
       setIsCallActive(false);
       setIsConnecting(false);
       setCallDuration(0);
-      callStartTimeRef.current = null;
+      // callStartTimeRef.current = null; // Removed as per edit hint
       if (onCallEnded) {
         onCallEnded();
       }
@@ -124,7 +125,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
       setIsCallActive(false);
       setIsConnecting(false);
       setCallDuration(0);
-      callStartTimeRef.current = null;
+      // callStartTimeRef.current = null; // Removed as per edit hint
     };
 
     return () => {
@@ -149,10 +150,10 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
 
   // Track Jitsi container creation
   useEffect(() => {
-    if (jitsiContainerRef.current) {
-      console.log("🎯 Jitsi container DOM element created and available");
-      console.log("🎯 Container element:", jitsiContainerRef.current);
-    }
+    // if (jitsiContainerRef.current) { // Removed as per edit hint
+    //   console.log("🎯 Jitsi container DOM element created and available"); // Removed as per edit hint
+    //   console.log("🎯 Container element:", jitsiContainerRef.current); // Removed as per edit hint
+    // } // Removed as per edit hint
   }, [isConnecting, isCallActive, isIncoming, callData]);
 
   // Handle call acceptance
@@ -170,7 +171,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
         setIsConnecting(false);
         setIsCallActive(true);
         setCurrentPlatform("jitsi");
-        callStartTimeRef.current = Date.now();
+        // callStartTimeRef.current = Date.now(); // Removed as per edit hint
 
         if (onAccept) {
           onAccept();
@@ -225,15 +226,6 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
     }
   };
 
-  // Format call duration
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -274,7 +266,7 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
           </div>
         </div>
 
-        {/* Caller Info */}
+        {/* Call Status Display */}
         <div className="text-center mb-6">
           {callerAvatar && (
             <img
@@ -283,17 +275,37 @@ const UnifiedCallDialog: FC<UnifiedCallDialogProps> = ({
               className="w-20 h-20 rounded-full mx-auto mb-4"
             />
           )}
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">
-            {callerName}
-          </h3>
-          <p className="text-gray-600">
-            {isIncoming ? "Incoming call..." : "Calling..."}
-          </p>
-
-          {/* Call Duration */}
-          {isCallActive && callDuration > 0 && (
-            <div className="mt-2 text-lg font-mono text-blue-600">
-              {formatDuration(callDuration)}
+          {isIncoming ? (
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Incoming Call
+              </h3>
+              <p className="text-gray-600 mb-2">Audio Call</p>
+              {isCallActive ? (
+                <div className="text-green-600 font-medium">
+                  Call Active - Duration: {callDuration}
+                </div>
+              ) : (
+                <div className="text-blue-600 font-medium">
+                  Incoming call...
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                {isCallActive ? "Call Active" : "Calling..."}
+              </h3>
+              <p className="text-gray-600 mb-2">Audio Call</p>
+              {isCallActive ? (
+                <div className="text-green-600 font-medium">
+                  Duration: {callDuration}
+                </div>
+              ) : (
+                <div className="text-blue-600 font-medium">
+                  Calling {callerName}...
+                </div>
+              )}
             </div>
           )}
         </div>

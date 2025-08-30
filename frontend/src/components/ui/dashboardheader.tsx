@@ -55,6 +55,14 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       console.log("🔌 Initializing socketManager connection...");
       socketManager.connect();
     }
+
+    // Debug: Show current socket status
+    console.log("🔌 Socket status check:", {
+      socketManagerConnected: socketManager.isConnected(),
+      socketManagerSocket: !!socketManager.socket,
+      socketProp: !!socket,
+      currentUserChat: currentUserChat?._id,
+    });
   }, [currentUserChat?._id]);
 
   // Set up socket event listeners for calling
@@ -115,9 +123,61 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       // Listen for call accepted
       activeSocket.on("callAccepted", (data: any) => {
         console.log("✅ Call accepted:", data);
+        console.log("🔍 Current call state:", {
+          isIncomingCall,
+          isCallActive,
+          outgoingCallData: outgoingCallData ? "exists" : "null",
+          currentUserChat: currentUserChat?._id,
+        });
+
+        // Check if this is for an incoming call or outgoing call
+        if (isIncomingCall) {
+          // Incoming call was accepted
+          setIsCallActive(true);
+          setIsIncomingCall(false);
+          console.log("🎯 Incoming call status set to active");
+        } else {
+          // Outgoing call was accepted by receiver
+          setIsCallActive(true);
+          setIsIncomingCall(false);
+          console.log("🎯 Outgoing call status set to active - call answered!");
+
+          // Stop any outgoing call ringing/loading state
+          if (outgoingCallData) {
+            setOutgoingCallData({
+              ...outgoingCallData,
+              status: "active" as const,
+            });
+            console.log("✅ Outgoing call data updated to active status");
+          }
+        }
+      });
+
+      // Listen for call connected (when call is fully established)
+      activeSocket.on("callConnected", (data: any) => {
+        console.log("🎉 Call connected:", data);
+        console.log("🔍 Call connected state:", {
+          isIncomingCall,
+          isCallActive,
+          outgoingCallData: outgoingCallData ? "exists" : "null",
+        });
+
+        // Set call as active regardless of incoming/outgoing
         setIsCallActive(true);
         setIsIncomingCall(false);
-        console.log("🎯 Call status set to active");
+
+        // Update outgoing call data if it exists
+        if (outgoingCallData) {
+          setOutgoingCallData({
+            ...outgoingCallData,
+            status: "active" as const,
+          });
+          console.log(
+            "✅ Outgoing call data updated to active status via callConnected"
+          );
+        }
+
+        console.log("🎯 Call fully connected and active!");
       });
 
       // Listen for call declined
@@ -158,6 +218,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
         if (activeSocket) {
           activeSocket.off("incomingCall");
           activeSocket.off("callAccepted");
+          activeSocket.off("callConnected");
           activeSocket.off("callDeclined");
           activeSocket.off("callEnded");
           activeSocket.off("callFailed");
