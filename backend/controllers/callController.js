@@ -59,7 +59,13 @@ const getCallHistory = asyncHandler(async (req, res) => {
 // @route   POST /api/calls
 // @access  Private
 const createCall = asyncHandler(async (req, res) => {
-  const { receiverId, type, callType, roomName, platform = "jitsi" } = req.body;
+  const {
+    receiverId,
+    type,
+    callType,
+    roomName,
+    platform = "webrtc",
+  } = req.body;
   const callerId = req.user._id;
 
   // Check if receiver exists
@@ -70,8 +76,7 @@ const createCall = asyncHandler(async (req, res) => {
   }
 
   // Generate room name if not provided
-  const finalRoomName =
-    roomName || `chat-${[callerId, receiverId].sort().join("-")}-${Date.now()}`;
+  const finalRoomName = roomName || `webrtc-${Date.now()}`;
 
   const call = await Call.create({
     caller: callerId,
