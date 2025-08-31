@@ -187,32 +187,46 @@ const JitsiCall: React.FC = () => {
             domain="meet.jit.si"
             roomName={roomName}
             configOverwrite={{
-              // Configuration for simple calls, not conferences
+              // Use the most basic configuration possible
               startWithAudioMuted: false,
               startWithVideoMuted: currentCall.callType === "audio",
               startAudioOnly: currentCall.callType === "audio",
               startSilent: false,
-              // Essential settings for calls
+
+              // Disable all authentication
               enableLobby: false,
               authenticationMode: "none",
-              // Basic media settings
+              prejoinPageEnabled: false,
+              enableWelcomePage: false,
+              enableClosePage: false,
+
+              // Force guest mode
+              guestDialOutEnabled: true,
+              guestDialInEnabled: true,
+              allowGuestDialOut: true,
+              allowGuestDialIn: true,
+
+              // Basic settings
               resolution: 720,
               maxFullResolutionParticipants: 2,
-              // Disable conference features
               fileRecordingsEnabled: false,
               liveStreamingEnabled: false,
-              disableAudioLevels: true,
-              disableModeratorIndicator: true,
-              disable1On1Mode: false, // Enable 1-on-1 mode for calls
               chatEnabled: false,
               desktopSharingEnabled: false,
+
               // Use public domain
               hosts: {},
               websocket: "wss://meet.jit.si/xmpp-websocket",
-              // Call-specific settings
-              prejoinPageEnabled: false, // Skip prejoin page for calls
-              enableWelcomePage: false, // Skip welcome page
-              enableClosePage: false, // Skip close page
+
+              // Additional bypass settings
+              disableAudioLevels: true,
+              disableModeratorIndicator: true,
+              disable1On1Mode: false,
+
+              // Force public access
+              userRoles: {},
+              accessControl: {},
+              roomPassword: "",
             }}
             interfaceConfigOverwrite={{
               TOOLBAR_BUTTONS: ["microphone", "camera", "hangup", "fullscreen"],
