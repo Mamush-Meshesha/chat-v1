@@ -46,7 +46,22 @@ const Home: FC<HomeProps> = () => {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
-  const isCallActive = useSelector((state: RootState) => state.calling.isCallActive);
+  const isCallActive = useSelector(
+    (state: RootState) => state.calling.isCallActive
+  );
+  const currentCall = useSelector(
+    (state: RootState) => state.calling.currentCall
+  );
+  const roomName = useSelector((state: RootState) => state.calling.roomName);
+
+  // Debug calling state
+  useEffect(() => {
+    console.log("🔍 Home: Calling state changed:", {
+      isCallActive,
+      currentCall,
+      roomName,
+    });
+  }, [isCallActive, currentCall, roomName]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeUser, setActiveUser] = useState([]);

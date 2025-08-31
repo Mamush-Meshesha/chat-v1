@@ -4,6 +4,8 @@ import { RootState } from "../store";
 import { endCall } from "../slice/callingSlice";
 
 const WebRTCCall: React.FC = () => {
+  console.log("🎯 WebRTCCall: Component rendered");
+
   const dispatch = useDispatch();
   const { currentCall, roomName, isCallActive } = useSelector(
     (state: RootState) => state.calling
