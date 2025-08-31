@@ -66,6 +66,9 @@ const WebRTCCall: React.FC = () => {
       currentCall,
       user: user?.name,
       isInitiator: isCaller,
+      currentUserId,
+      callerId: currentCall.callerId,
+      isCaller,
     });
 
     initializeCall();
@@ -172,8 +175,17 @@ const WebRTCCall: React.FC = () => {
       if (isInitiator && socketRef.current && currentCall) {
         try {
           console.log("🎯 Creating WebRTC offer as initiator...");
+          console.log("🔍 Initiator check:", {
+            isInitiator,
+            hasSocket: !!socketRef.current,
+            hasCurrentCall: !!currentCall,
+          });
+
           const offer = await peerConnection.createOffer();
+          console.log("✅ Offer created:", offer);
+
           await peerConnection.setLocalDescription(offer);
+          console.log("✅ Local description set");
 
           // Send offer to the receiver
           socketRef.current.emit("webrtc-offer", {
@@ -181,11 +193,21 @@ const WebRTCCall: React.FC = () => {
             offer,
             roomName,
           });
-          console.log("✅ WebRTC Offer sent to receiver");
+          console.log(
+            "✅ WebRTC Offer sent to receiver:",
+            currentCall.receiverId
+          );
         } catch (err) {
           console.error("❌ Error creating/sending offer:", err);
           setError("Failed to initiate call");
         }
+      } else {
+        console.log("⏸️ Not creating offer:", {
+          isInitiator,
+          hasSocket: !!socketRef.current,
+          hasCurrentCall: !!currentCall,
+          currentCallReceiverId: currentCall?.receiverId,
+        });
       }
     } catch (err) {
       console.error("❌ Error initializing WebRTC call:", err);
@@ -198,9 +220,16 @@ const WebRTCCall: React.FC = () => {
   };
 
   const setupSignalingListeners = () => {
-    if (!socketRef.current) return;
+    if (!socketRef.current) {
+      console.log("❌ setupSignalingListeners: No socket available");
+      return;
+    }
 
     const socket = socketRef.current;
+    console.log(
+      "🔧 Setting up WebRTC signaling listeners with socket:",
+      socket.id
+    );
 
     // Listen for WebRTC offers (for the receiver)
     socket.on("webrtc-offer", async (data) => {
@@ -266,6 +295,8 @@ const WebRTCCall: React.FC = () => {
         console.error("❌ Error adding ICE candidate:", err);
       }
     });
+
+    console.log("✅ WebRTC signaling listeners set up successfully");
   };
 
   const cleanup = () => {
