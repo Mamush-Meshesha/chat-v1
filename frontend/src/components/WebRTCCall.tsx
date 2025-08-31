@@ -5,23 +5,35 @@ import { endCall } from "../slice/callingSlice";
 
 const WebRTCCall: React.FC = () => {
   const dispatch = useDispatch();
-  const { currentCall, roomName } = useSelector(
+  const { currentCall, roomName, isCallActive } = useSelector(
     (state: RootState) => state.calling
   );
   const { user } = useSelector((state: RootState) => state.auth);
-  
+
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  
+
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(currentCall?.callType === "audio");
+  const [isVideoOff, setIsVideoOff] = useState(
+    currentCall?.callType === "audio"
+  );
   const [error, setError] = useState<string | null>(null);
+
+  console.log("✅ WebRTCCall: Rendering with data:", {
+    isCallActive,
+    currentCall,
+    roomName,
+  });
 
   useEffect(() => {
     if (!currentCall || !roomName) {
+      console.log("🚫 WebRTCCall: Missing required data:", {
+        currentCall,
+        roomName,
+      });
       return;
     }
 
@@ -32,7 +44,7 @@ const WebRTCCall: React.FC = () => {
     });
 
     initializeCall();
-    
+
     return () => {
       cleanup();
     };
@@ -45,9 +57,9 @@ const WebRTCCall: React.FC = () => {
         audio: true,
         video: currentCall?.callType === "video",
       });
-      
+
       localStreamRef.current = stream;
-      
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
@@ -63,7 +75,7 @@ const WebRTCCall: React.FC = () => {
       peerConnectionRef.current = peerConnection;
 
       // Add local stream
-      stream.getTracks().forEach(track => {
+      stream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, stream);
       });
 
@@ -93,21 +105,25 @@ const WebRTCCall: React.FC = () => {
       console.log("✅ WebRTC call initialized");
     } catch (err) {
       console.error("❌ Error initializing WebRTC call:", err);
-      setError(`Failed to initialize call: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setError(
+        `Failed to initialize call: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     }
   };
 
   const cleanup = () => {
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
     }
-    
+
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
-    
+
     setIsConnected(false);
   };
 
@@ -141,7 +157,9 @@ const WebRTCCall: React.FC = () => {
       <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center">
         <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-red-600 mb-2">Call Error</h3>
+            <h3 className="text-lg font-semibold text-red-600 mb-2">
+              Call Error
+            </h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
               onClick={handleEndCall}
@@ -163,7 +181,9 @@ const WebRTCCall: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">
-                {currentCall?.callType === "audio" ? "Audio Call" : "Video Call"}
+                {currentCall?.callType === "audio"
+                  ? "Audio Call"
+                  : "Video Call"}
               </h2>
               <p className="text-sm text-gray-300">
                 Call with {currentCall?.callerName}
@@ -224,7 +244,7 @@ const WebRTCCall: React.FC = () => {
             >
               {isMuted ? "🔇" : "🔊"}
             </button>
-            
+
             {currentCall?.callType === "video" && (
               <button
                 onClick={toggleVideo}
@@ -235,7 +255,7 @@ const WebRTCCall: React.FC = () => {
                 {isVideoOff ? "📹" : "📷"}
               </button>
             )}
-            
+
             <button
               onClick={handleEndCall}
               className="p-3 rounded-full bg-red-600 text-white"

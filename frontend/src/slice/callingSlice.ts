@@ -115,6 +115,7 @@ export const callingSlice = createSlice({
       state.incomingCallData = null;
       state.isCallActive = true;
       state.currentCall = action.payload;
+      state.roomName = action.payload.roomName; // Set roomName from call data
       state.outgoingCallData = null;
       state.isCallDialogOpen = false;
     },
@@ -130,6 +131,7 @@ export const callingSlice = createSlice({
     callConnected: (state, action: PayloadAction<CallData>) => {
       state.isCallActive = true;
       state.currentCall = action.payload;
+      state.roomName = action.payload.roomName; // Set roomName from call data
       state.outgoingCallData = null;
       state.isCallDialogOpen = false;
       state.isIncomingCall = false;
