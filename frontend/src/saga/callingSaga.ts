@@ -101,8 +101,8 @@ function* initiateCallSaga(
 
     // Generate proper room name with caller and receiver IDs
     const timestamp = Date.now();
-    // Use a very simple room name that bypasses Jitsi authentication
-    const roomName = `open-${timestamp}`;
+    // Use a simple room name for WebRTC peer connection
+    const roomName = `webrtc-${timestamp}`;
 
     console.log("🔍 Call data:", {
       callerId,
