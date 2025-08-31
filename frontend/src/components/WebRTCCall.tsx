@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
 import { endCall } from "../slice/callingSlice";
+import { Socket } from "socket.io-client";
+import socketManager from "../services/socketManager";
 
 const WebRTCCall: React.FC = () => {
   console.log("🎯 WebRTCCall: Component rendered");
@@ -16,6 +18,7 @@ const WebRTCCall: React.FC = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -25,6 +28,7 @@ const WebRTCCall: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<string>("Initializing...");
+  const [isInitiator, setIsInitiator] = useState(false);
 
   console.log("✅ WebRTCCall: Rendering with data:", {
     isCallActive,
@@ -41,13 +45,31 @@ const WebRTCCall: React.FC = () => {
       return;
     }
 
+    // Get socket instance
+    const socket = socketManager.getSocket();
+    if (!socket) {
+      console.error("❌ WebRTCCall: No socket available");
+      setError("No socket connection available");
+      return;
+    }
+    socketRef.current = socket;
+
+    // Determine if this user is the initiator (caller)
+    const currentUserId = localStorage.getItem("authUser")
+      ? JSON.parse(localStorage.getItem("authUser")!)._id
+      : null;
+    const isCaller = currentUserId === currentCall.callerId;
+    setIsInitiator(isCaller);
+
     console.log("🎯 WebRTCCall: Setting up call", {
       roomName,
       currentCall,
       user: user?.name,
+      isInitiator: isCaller,
     });
 
     initializeCall();
+    setupSignalingListeners();
 
     return () => {
       cleanup();
@@ -145,6 +167,26 @@ const WebRTCCall: React.FC = () => {
         localDescription: peerConnection.localDescription,
         remoteDescription: peerConnection.remoteDescription,
       });
+
+      // If this user is the initiator, create and send the offer
+      if (isInitiator && socketRef.current && currentCall) {
+        try {
+          console.log("🎯 Creating WebRTC offer as initiator...");
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+
+          // Send offer to the receiver
+          socketRef.current.emit("webrtc-offer", {
+            targetUserId: currentCall.receiverId,
+            offer,
+            roomName,
+          });
+          console.log("✅ WebRTC Offer sent to receiver");
+        } catch (err) {
+          console.error("❌ Error creating/sending offer:", err);
+          setError("Failed to initiate call");
+        }
+      }
     } catch (err) {
       console.error("❌ Error initializing WebRTC call:", err);
       setError(
@@ -155,18 +197,103 @@ const WebRTCCall: React.FC = () => {
     }
   };
 
+  const setupSignalingListeners = () => {
+    if (!socketRef.current) return;
+
+    const socket = socketRef.current;
+
+    // Listen for WebRTC offers (for the receiver)
+    socket.on("webrtc-offer", async (data) => {
+      console.log("📡 WebRTC Offer received:", data);
+      try {
+        const { offer, fromUserId } = data;
+
+        if (peerConnectionRef.current) {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(offer)
+          );
+          console.log("✅ Remote description set from offer");
+
+          // Create and send answer
+          const answer = await peerConnectionRef.current.createAnswer();
+          await peerConnectionRef.current.setLocalDescription(answer);
+
+          // Send answer back to the caller
+          socket.emit("webrtc-answer", {
+            targetUserId: fromUserId,
+            answer,
+            roomName,
+          });
+          console.log("✅ WebRTC Answer sent");
+        }
+      } catch (err) {
+        console.error("❌ Error handling WebRTC offer:", err);
+        setError("Failed to handle incoming call");
+      }
+    });
+
+    // Listen for WebRTC answers (for the caller)
+    socket.on("webrtc-answer", async (data) => {
+      console.log("📡 WebRTC Answer received:", data);
+      try {
+        const { answer } = data;
+
+        if (peerConnectionRef.current) {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(answer)
+          );
+          console.log("✅ Remote description set from answer");
+        }
+      } catch (err) {
+        console.error("❌ Error handling WebRTC answer:", err);
+        setError("Failed to handle call answer");
+      }
+    });
+
+    // Listen for ICE candidates
+    socket.on("webrtc-ice-candidate", async (data) => {
+      console.log("📡 WebRTC ICE Candidate received:", data);
+      try {
+        const { candidate } = data;
+
+        if (peerConnectionRef.current) {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(candidate)
+          );
+          console.log("✅ ICE candidate added");
+        }
+      } catch (err) {
+        console.error("❌ Error adding ICE candidate:", err);
+      }
+    });
+  };
+
   const cleanup = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
+    console.log("🧹 WebRTCCall: Cleaning up...");
+
+    // Remove signaling listeners
+    if (socketRef.current) {
+      socketRef.current.off("webrtc-offer");
+      socketRef.current.off("webrtc-answer");
+      socketRef.current.off("webrtc-ice-candidate");
     }
 
+    // Close peer connection
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
 
+    // Stop local stream
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+
+    // Reset state
     setIsConnected(false);
+    setConnectionStatus("Initializing...");
+    setError(null);
   };
 
   const toggleMute = () => {
