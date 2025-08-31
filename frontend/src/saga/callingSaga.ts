@@ -16,7 +16,7 @@ import { RootState } from "../store";
 // Create call record in backend
 function* createCallRecord(callData: {
   receiverId: string;
-  type: "outgoing" | "incoming";
+  type: string;
   callType: "audio" | "video";
   roomName: string;
 }): Generator<any, string | null, any> {
@@ -28,7 +28,9 @@ function* createCallRecord(callData: {
       throw new Error("No authentication token found");
     }
 
-    const response: any = yield call(
+    const response: {
+      data: { success?: boolean; _id?: string; call?: { _id: string } };
+    } = yield call(
       axios.post,
       getApiUrl("/api/calls"),
       {
@@ -46,11 +48,11 @@ function* createCallRecord(callData: {
     );
 
     if (response.data.success || response.data._id) {
-      return response.data._id || response.data.call?._id;
+      return response.data._id || response.data.call?._id || null;
     } else {
       throw new Error("Failed to create call record");
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating call record:", error);
     return null;
   }
@@ -99,8 +101,8 @@ function* initiateCallSaga(
 
     // Generate proper room name with caller and receiver IDs
     const timestamp = Date.now();
-    const sortedIds = [callerId, receiverId].sort();
-    const roomName = `call-${sortedIds[0]}-${sortedIds[1]}-${timestamp}`;
+    // Use a very simple, public-friendly room name format
+    const roomName = `meeting-${timestamp}`;
 
     console.log("🔍 Call data:", {
       callerId,

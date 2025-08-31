@@ -191,26 +191,15 @@ const JitsiCall: React.FC = () => {
               startWithVideoMuted: currentCall.callType === "audio",
               startAudioOnly: currentCall.callType === "audio",
               startSilent: false,
-              // Disable lobby and authentication
+              // Only essential settings
               enableLobby: false,
               authenticationMode: "none",
-              // Allow anyone to join
-              hosts: {},
               // Basic media settings
               resolution: 720,
               maxFullResolutionParticipants: 2,
               // Disable unnecessary features
               fileRecordingsEnabled: false,
               liveStreamingEnabled: false,
-              // Allow guests
-              allowGuestDialOut: false,
-              allowGuestDialIn: false,
-              // Disable prejoin page
-              prejoinPageEnabled: false,
-              // Ensure public access
-              membersOnly: false,
-              // Disable waiting room
-              waitingRoomEnabled: false,
             }}
             interfaceConfigOverwrite={{
               TOOLBAR_BUTTONS: [
