@@ -203,7 +203,7 @@ function* watchFetchMessageSaga() {
 }
 
 // root saga
-export default function* rootSaga() {
+export function* authSaga() {
   yield all([
     watchLoginUser(),
     watchLogoutUser(),

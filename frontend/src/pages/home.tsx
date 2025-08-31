@@ -4,7 +4,8 @@ import Dashboardheader from "../components/ui/dashboardheader";
 import Dashboardbottom from "../components/ui/dashboardbottom";
 import Header from "../components/header";
 import Notification from "../components/ui/notification";
-import UnifiedCallDialog from "../components/ui/unifiedCallDialog";
+import CallDialog from "../components/CallDialog";
+import JitsiCall from "../components/JitsiCall";
 import { FaCheck } from "react-icons/fa6";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
@@ -18,7 +19,7 @@ import {
   setCurrentUser,
 } from "../slice/userSlice";
 import { logout } from "../slice/authSlice";
-import unifiedCallingService from "../services/unifiedCallingService";
+import { receiveIncomingCall } from "../slice/callingSlice";
 import socketManager from "../services/socketManager";
 
 interface HomeProps {}
@@ -27,17 +28,6 @@ interface NotificationData {
   id: string;
   message: string;
   senderName: string;
-}
-
-interface CallData {
-  callerId: string;
-  callerName: string;
-  callType: "audio" | "video";
-  callerAvatar?: string;
-  callId: string;
-  receiverId: string;
-  status: "ringing" | "active" | "ended";
-  platform: "jitsi";
 }
 
 const Home: FC<HomeProps> = () => {
@@ -56,11 +46,10 @@ const Home: FC<HomeProps> = () => {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeUser, setActiveUser] = useState([]);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  const [incomingCall, setIncomingCall] = useState<CallData | null>(null);
-  const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState("chat"); // Mobile navigation state
   const isLoggingOut = useRef(false);
   const socket = useRef<Socket | null>(null);
@@ -195,23 +184,13 @@ const Home: FC<HomeProps> = () => {
           });
 
           // Listen for incoming calls
-          // REMOVED: This was intercepting events before dashboardheader.tsx could handle them
-          // socket.current.on("incomingCall", (data) => {
-          //   console.log("Incoming call received:", data);
-          //   if (authUser?._id) {
-          //     setIncomingCall({
-          //       callId: data.callId,
-          //       callerId: data.callerId,
-          //       receiverId: authUser._id, // Add the missing receiverId
-          //       callType: data.callType,
-          //       callerName: data.callerName || "Unknown",
-          //       callerAvatar: data.callerAvatar,
-          //       status: "ringing" as const, // Add the missing status
-          //       platform: "jitsi" as const, // Add the platform property
-          //     });
-          //     setIsCallDialogOpen(true);
-          //   }
-          // });
+          socket.current.on("incomingCall", (data) => {
+            console.log("📞 Home: Incoming call received:", data);
+            if (authUser?._id) {
+              // Dispatch Redux action to receive incoming call
+              dispatch(receiveIncomingCall(data));
+            }
+          });
         } else {
           console.log(
             "✅ Home: Socket already connected, reusing existing connection"
@@ -319,141 +298,6 @@ const Home: FC<HomeProps> = () => {
     setNotifications((prev) =>
       prev.filter((notification) => notification.id !== id)
     );
-  };
-
-  // Handle call actions
-  const handleAcceptCall = async () => {
-    console.log("🔄 HOME: handleAcceptCall called");
-    console.log("🔄 HOME: Incoming call data:", incomingCall);
-    console.log("🔄 HOME: Current user ID:", authUser?._id);
-    console.log("🔄 HOME: Socket status:", !!socket.current);
-    console.log("🔄 HOME: Socket ID:", socket.current?.id);
-    console.log("🔄 HOME: Calling service socket ID:", socket.current?.id);
-
-    if (incomingCall && socket.current && authUser?._id) {
-      try {
-        // Emit accept call event to socket server
-        socket.current.emit("acceptCall", {
-          callerId: incomingCall.callerId,
-          receiverId: authUser._id,
-          callType: incomingCall.callType,
-        });
-
-        console.log("✅ Accept call event emitted to socket server");
-        console.log("✅ Event data:", {
-          callerId: incomingCall.callerId,
-          receiverId: authUser._id,
-          callType: incomingCall.callType,
-        });
-
-        // Update local state
-        setIsCallDialogOpen(true);
-
-        // Accept the call using calling service
-        const success = await unifiedCallingService.acceptCall({
-          callId: incomingCall.callId || "",
-          callerId: incomingCall.callerId,
-          receiverId: incomingCall.receiverId,
-          callType: incomingCall.callType,
-          callerName: incomingCall.callerName,
-          callerAvatar: incomingCall.callerAvatar,
-          status: "ringing",
-          platform: "jitsi",
-        });
-
-        if (success) {
-          console.log("✅ Call accepted successfully in calling service");
-          // The calling service will handle the call state changes
-        } else {
-          console.error("❌ Failed to accept call in calling service");
-          alert("Failed to accept call. Please try again.");
-        }
-      } catch (error) {
-        console.error("❌ Error accepting call:", error);
-        alert("Error accepting call. Please try again.");
-      }
-    } else {
-      console.error("❌ No incoming call data or socket available");
-      console.error("❌ Incoming call:", incomingCall);
-      console.error("❌ Socket:", socket.current);
-    }
-  };
-
-  const handleDeclineCall = async () => {
-    console.log("🔄 Home: Declining incoming call...");
-    console.log("Incoming call data:", incomingCall);
-
-    if (incomingCall && socket.current && authUser?._id) {
-      try {
-        // Emit decline call event to socket server
-        socket.current.emit("declineCall", {
-          callerId: incomingCall.callerId,
-          receiverId: authUser._id,
-          callType: incomingCall.callType,
-        });
-
-        console.log("✅ Decline call event emitted to socket server");
-
-        // Clean up local state
-        setIncomingCall(null);
-        setIsCallDialogOpen(false);
-
-        // Decline the call using calling service
-        await unifiedCallingService.declineCall({
-          callId: incomingCall.callId || "",
-          callerId: incomingCall.callerId,
-          receiverId: incomingCall.receiverId,
-          callType: incomingCall.callType,
-          callerName: incomingCall.callerName,
-          callerAvatar: incomingCall.callerAvatar,
-          status: "ringing",
-          platform: "jitsi",
-        });
-
-        console.log("✅ Call declined successfully");
-      } catch (error) {
-        console.error("❌ Error declining call:", error);
-        // Still clean up state even if there's an error
-        setIncomingCall(null);
-        setIsCallDialogOpen(false);
-      }
-    } else {
-      console.error("❌ No incoming call data or socket available");
-      // Clean up state
-      setIncomingCall(null);
-      setIsCallDialogOpen(false);
-    }
-  };
-
-  const handleEndCall = async () => {
-    console.log("🔄 Home: Ending call...");
-    console.log("Current call state:", { incomingCall, isCallDialogOpen });
-
-    try {
-      // End the call using calling service
-      await unifiedCallingService.endCall();
-
-      console.log("✅ Call ended successfully");
-
-      // Clean up local state
-      setIncomingCall(null);
-      setIsCallDialogOpen(false);
-
-      // Emit end call event to socket server if we have call data
-      if (incomingCall && socket.current && authUser?._id) {
-        socket.current.emit("endCall", {
-          callerId: incomingCall.callerId,
-          receiverId: authUser._id,
-          callType: incomingCall.callType,
-        });
-        console.log("✅ End call event emitted to socket server");
-      }
-    } catch (error) {
-      console.error("❌ Error ending call:", error);
-      // Still clean up state even if there's an error
-      setIncomingCall(null);
-      setIsCallDialogOpen(false);
-    }
   };
 
   // Format time
@@ -1111,32 +955,9 @@ const Home: FC<HomeProps> = () => {
         </div>
       </div>
 
-      {/* Incoming Call Dialog */}
-      {incomingCall && (
-        <UnifiedCallDialog
-          isOpen={isCallDialogOpen}
-          onClose={() => {
-            setIsCallDialogOpen(false);
-            setIncomingCall(null);
-          }}
-          callType={incomingCall.callType}
-          callerName={incomingCall.callerName}
-          callerAvatar={incomingCall.callerAvatar}
-          isIncoming={true}
-          onAccept={handleAcceptCall}
-          onDecline={handleDeclineCall}
-          onEndCall={handleEndCall}
-          onCancel={handleDeclineCall} // Use decline as cancel for incoming calls
-          callData={incomingCall}
-          onCallEnded={() => {
-            console.log("🔄 Incoming call ended, refreshing call history...");
-            // Emit custom event to refresh call history
-            window.dispatchEvent(
-              new CustomEvent("callEnded", { detail: incomingCall })
-            );
-          }}
-        />
-      )}
+      {/* Redux Calling Components */}
+      <CallDialog />
+      <JitsiCall />
 
       {/* Notifications */}
       {notifications.map((notification, index) => (

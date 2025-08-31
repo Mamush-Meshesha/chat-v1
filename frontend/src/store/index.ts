@@ -3,7 +3,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import rootReducer from "../reducer/rootReducer";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
-import rootSaga from "../saga/sagaAuth";
+import rootSaga from "../saga/rootSaga";
 
 const persistConfig = {
   key: "root",

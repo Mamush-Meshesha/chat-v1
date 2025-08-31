@@ -13,7 +13,7 @@ export interface JitsiCallData {
   callType: "audio" | "video";
   callerName: string;
   callerAvatar?: string;
-  status: "ringing" | "active" | "ended";
+  status: "ringing" | "active" | "ended" | "declined" | "missed";
   roomName: string;
 }
 
