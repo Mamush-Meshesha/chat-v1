@@ -23,12 +23,6 @@ const getActiveCall = (userId) => {
   return activeCalls.get(userId);
 };
 
-// Generate unique room name for Jitsi
-const generateRoomName = (callerId, receiverId) => {
-  const sortedIds = [callerId, receiverId].sort();
-  return `chat-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
-};
-
 io.on("connection", (socket) => {
   console.log("✅ Socket connected:", socket.id);
   console.log("📊 Total active connections:", io.engine.clientsCount);
@@ -101,73 +95,42 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle unified call initiation (supports both Jitsi and WebRTC)
+  // Handle initiate call
   socket.on("initiateCall", (data) => {
-    console.log("📞 Call initiated:", data);
-    console.log("🔍 Looking for receiver:", data.receiverId);
-    console.log("📊 Active users:", activeUsers);
-    console.log("🔌 Caller socket ID:", socket.id);
+    console.log("📞 Initiate call received:", data);
+
+    // Use the room name provided by the client (from saga)
+    const roomName = data.roomName;
+    if (!roomName) {
+      console.error("❌ No room name provided for call");
+      return;
+    }
 
     const receiver = getUser(data.receiverId);
-
     if (receiver) {
-      console.log("✅ Receiver found:", receiver);
-      console.log("🔌 Receiver socket ID:", receiver.socketId);
-
-      // Check if user is already in a call
-      if (getActiveCall(data.receiverId)) {
-        console.log("❌ Receiver is busy in another call");
-        socket.emit("callFailed", {
-          reason: "User is busy in another call",
-          receiverId: data.receiverId,
-        });
-        return;
-      }
-
-      // Generate room name if not provided (for Jitsi)
-      const roomName =
-        data.roomName || generateRoomName(data.callerId, data.receiverId);
+      console.log("📤 Sending incoming call to:", data.receiverId);
+      console.log("🏠 Room name:", roomName);
 
       // Store call data
       const callData = {
-        callId:
-          data.callId || `${data.callerId}-${data.callerId}-${Date.now()}`,
+        callId: data.callId,
         callerId: data.callerId,
         receiverId: data.receiverId,
         callType: data.callType,
         status: "ringing",
         startTime: Date.now(),
         roomName: roomName,
-        platform: data.platform || "jitsi", // Default to Jitsi
-        callerName: data.callerName || "Caller",
-        callerAvatar: data.callerAvatar || "/profile.jpg",
+        platform: "webrtc",
+        callerName: data.callerName,
+        callerAvatar: data.callerAvatar,
       };
 
-      activeCalls.set(data.callerId, callData);
-      activeCalls.set(data.receiverId, callData);
-
+      activeCalls.set(data.callId, callData);
       console.log("💾 Call data stored:", callData);
-      console.log(
-        "📤 Emitting incomingCall to receiver socket:",
-        receiver.socketId
-      );
 
-      // Emit incoming call to receiver
       io.to(receiver.socketId).emit("incomingCall", callData);
-
-      console.log("✅ Incoming call sent to:", data.receiverId);
-      console.log("✅ Call platform:", callData.platform);
-      console.log("✅ Room name:", callData.roomName);
     } else {
-      console.log("❌ Receiver not found in active users");
-      console.log(
-        "❌ Available user IDs:",
-        activeUsers.map((u) => u.userId)
-      );
-      socket.emit("callFailed", {
-        reason: "Receiver not found",
-        receiverId: data.receiverId,
-      });
+      console.log("❌ Receiver not found:", data.receiverId);
     }
   });
 
@@ -267,9 +230,8 @@ io.on("connection", (socket) => {
           status: "active",
           startTime: Date.now(),
           answerTime: Date.now(),
-          roomName:
-            data.roomName || generateRoomName(data.callerId, data.receiverId),
-          platform: data.platform || "jitsi",
+          roomName: data.roomName, // Use the room name provided by the client
+          platform: "webrtc",
         };
 
         activeCalls.set(data.callerId, newCallData);
@@ -356,9 +318,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle Jitsi meeting join notification
+  // Handle WebRTC meeting join notification
   socket.on("joinMeeting", (data) => {
-    console.log("🔄 User joining Jitsi meeting:", data);
+    console.log("🔄 User joining WebRTC meeting:", data);
     const { roomName, userId, displayName } = data;
 
     // Notify other participants in the same room
@@ -373,18 +335,18 @@ io.on("connection", (socket) => {
           roomName,
           userId,
           displayName,
-          platform: "jitsi",
+          platform: "webrtc",
         });
       }
     }
   });
 
-  // Handle Jitsi meeting leave notification
+  // Handle WebRTC meeting leave notification
   socket.on("leaveMeeting", (data) => {
-    console.log("🔄 User leaving Jitsi meeting:", data);
+    console.log("🔄 User leaving WebRTC meeting:", data);
     const { roomName, userId } = data;
 
-    // Notify other participants
+    // Notify other participants in the same room
     const callData = getActiveCall(userId);
     if (callData) {
       const otherUserId =
@@ -395,7 +357,7 @@ io.on("connection", (socket) => {
         io.to(otherUser.socketId).emit("participantLeft", {
           roomName,
           userId,
-          platform: "jitsi",
+          platform: "webrtc",
         });
       }
     }
@@ -470,6 +432,64 @@ io.on("connection", (socket) => {
         ...data,
         senderSocketId: socket.id,
       });
+    }
+  });
+
+  // WebRTC Signaling Events
+  socket.on("webrtc-offer", (data) => {
+    console.log("📡 WebRTC Offer received:", data);
+    const { targetUserId, offer, roomName } = data;
+
+    // Forward the offer to the target user
+    const targetSocket = getUser(targetUserId);
+    if (targetSocket) {
+      targetSocket.emit("webrtc-offer", {
+        fromUserId: socket.userId,
+        offer,
+        roomName,
+      });
+      console.log("✅ WebRTC Offer forwarded to:", targetUserId);
+    } else {
+      console.log("❌ Target user not found for WebRTC offer:", targetUserId);
+    }
+  });
+
+  socket.on("webrtc-answer", (data) => {
+    console.log("📡 WebRTC Answer received:", data);
+    const { targetUserId, answer, roomName } = data;
+
+    // Forward the answer to the target user
+    const targetSocket = getUser(targetUserId);
+    if (targetSocket) {
+      targetSocket.emit("webrtc-answer", {
+        fromUserId: socket.userId,
+        answer,
+        roomName,
+      });
+      console.log("✅ WebRTC Answer forwarded to:", targetUserId);
+    } else {
+      console.log("❌ Target user not found for WebRTC answer:", targetUserId);
+    }
+  });
+
+  socket.on("webrtc-ice-candidate", (data) => {
+    console.log("📡 WebRTC ICE Candidate received:", data);
+    const { targetUserId, candidate, roomName } = data;
+
+    // Forward the ICE candidate to the target user
+    const targetSocket = getUser(targetUserId);
+    if (targetSocket) {
+      targetSocket.emit("webrtc-ice-candidate", {
+        fromUserId: socket.userId,
+        candidate,
+        roomName,
+      });
+      console.log("✅ WebRTC ICE Candidate forwarded to:", targetUserId);
+    } else {
+      console.log(
+        "❌ Target user not found for WebRTC ICE candidate:",
+        targetUserId
+      );
     }
   });
 
