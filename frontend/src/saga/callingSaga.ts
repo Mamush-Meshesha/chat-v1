@@ -101,8 +101,8 @@ function* initiateCallSaga(
 
     // Generate proper room name with caller and receiver IDs
     const timestamp = Date.now();
-    // Use a very simple, public-friendly room name format
-    const roomName = `meeting-${timestamp}`;
+    // Use a simple call format that feels like a normal phone call
+    const roomName = `call-${timestamp}`;
 
     console.log("🔍 Call data:", {
       callerId,

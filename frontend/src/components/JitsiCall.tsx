@@ -19,7 +19,7 @@ const JitsiCall: React.FC = () => {
       return;
     }
 
-    console.log("🎯 JitsiCall: Setting up Jitsi meeting", {
+    console.log("🎯 JitsiCall: Setting up call", {
       roomName,
       currentCall,
       user: user?.name,
@@ -67,21 +67,21 @@ const JitsiCall: React.FC = () => {
       // Listen for participant joined
       externalApi.addEventListeners({
         participantJoined: () => {
-          console.log("👤 Participant joined the meeting");
+          console.log("👤 Participant joined the call");
         },
         participantLeft: () => {
-          console.log("👤 Participant left the meeting");
+          console.log("👤 Participant left the call");
         },
         videoConferenceJoined: () => {
-          console.log("🎉 User joined the video conference");
+          console.log("🎉 User joined the call");
         },
         videoConferenceLeft: () => {
-          console.log("🔚 User left the video conference");
+          console.log("🔚 User left the call");
           dispatch(endCall());
         },
         conferenceFailed: (event: any) => {
-          console.error("❌ Conference failed:", event);
-          setJitsiError(`Conference failed: ${event.error || "Unknown error"}`);
+          console.error("❌ Call failed:", event);
+          setJitsiError(`Call failed: ${event.error || "Unknown error"}`);
         },
         mediaError: (event: any) => {
           console.error("❌ Media error:", event);
@@ -89,13 +89,13 @@ const JitsiCall: React.FC = () => {
         },
         // Add more event listeners for debugging
         conferenceJoined: () => {
-          console.log("🎉 Conference joined successfully");
+          console.log("🎉 Call joined successfully");
         },
         conferenceWillJoin: () => {
-          console.log("🔄 Conference will join...");
+          console.log("🔄 Call will join...");
         },
         conferenceTerminated: () => {
-          console.log("🔚 Conference terminated");
+          console.log("🔚 Call terminated");
         },
         audioMuteStatusChanged: (event: any) => {
           console.log("🔇 Audio mute status changed:", event.muted);
@@ -162,7 +162,7 @@ const JitsiCall: React.FC = () => {
                 {currentCall.callType === "audio" ? "Audio Call" : "Video Call"}
               </h2>
               <p className="text-sm text-gray-300">
-                Call ID: {currentCall.callId}
+                Call with {currentCall.callerName}
               </p>
               {jitsiError && (
                 <p className="text-sm text-red-400 mt-1">Error: {jitsiError}</p>
@@ -187,48 +187,35 @@ const JitsiCall: React.FC = () => {
             domain="meet.jit.si"
             roomName={roomName}
             configOverwrite={{
+              // Configuration for simple calls, not conferences
               startWithAudioMuted: false,
               startWithVideoMuted: currentCall.callType === "audio",
               startAudioOnly: currentCall.callType === "audio",
               startSilent: false,
-              // Only essential settings
+              // Essential settings for calls
               enableLobby: false,
               authenticationMode: "none",
               // Basic media settings
               resolution: 720,
               maxFullResolutionParticipants: 2,
-              // Disable unnecessary features
+              // Disable conference features
               fileRecordingsEnabled: false,
               liveStreamingEnabled: false,
+              disableAudioLevels: true,
+              disableModeratorIndicator: true,
+              disable1On1Mode: false, // Enable 1-on-1 mode for calls
+              chatEnabled: false,
+              desktopSharingEnabled: false,
+              // Use public domain
+              hosts: {},
+              websocket: "wss://meet.jit.si/xmpp-websocket",
+              // Call-specific settings
+              prejoinPageEnabled: false, // Skip prejoin page for calls
+              enableWelcomePage: false, // Skip welcome page
+              enableClosePage: false, // Skip close page
             }}
             interfaceConfigOverwrite={{
-              TOOLBAR_BUTTONS: [
-                "microphone",
-                "camera",
-                "closedcaptions",
-                "desktop",
-                "fullscreen",
-                "fodeviceselection",
-                "hangup",
-                "chat",
-                "recording",
-                "livestreaming",
-                "etherpad",
-                "sharedvideo",
-                "settings",
-                "raisehand",
-                "videoquality",
-                "filmstrip",
-                "feedback",
-                "stats",
-                "shortcuts",
-                "tileview",
-                "select-background",
-                "download",
-                "help",
-                "mute-everyone",
-                "security",
-              ],
+              TOOLBAR_BUTTONS: ["microphone", "camera", "hangup", "fullscreen"],
               SHOW_JITSI_WATERMARK: false,
               SHOW_WATERMARK_FOR_GUESTS: false,
               SHOW_POWERED_BY: false,
@@ -239,10 +226,13 @@ const JitsiCall: React.FC = () => {
               SHOW_MEETING_NAME: false,
               TOOLBAR_ALWAYS_VISIBLE: true,
               VERTICAL_FILMSTRIP: false,
+              // Call-specific interface settings
+              DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
+              DISABLE_PRESENCE_INDICATOR: true,
             }}
             userInfo={{
               displayName: user?.name || "User",
-              email: user?.email || "user@example.com",
+              email: "call@example.com", // Minimal email for Jitsi compatibility
             }}
             onApiReady={handleApiReady}
             onReadyToClose={handleReadyToClose}
