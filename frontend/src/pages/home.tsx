@@ -5,7 +5,7 @@ import Dashboardbottom from "../components/ui/dashboardbottom";
 import Header from "../components/header";
 import Notification from "../components/ui/notification";
 import CallDialog from "../components/CallDialog";
-import JitsiCall from "../components/JitsiCall";
+import WebRTCCall from "../components/WebRTCCall";
 import { FaCheck } from "react-icons/fa6";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
@@ -954,7 +954,7 @@ const Home: FC<HomeProps> = () => {
 
       {/* Redux Calling Components */}
       <CallDialog />
-      <JitsiCall />
+      <WebRTCCall />
 
       {/* Notifications */}
       {notifications.map((notification, index) => (

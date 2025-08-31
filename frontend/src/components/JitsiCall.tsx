@@ -192,20 +192,20 @@ const JitsiCall: React.FC = () => {
               startWithVideoMuted: currentCall.callType === "audio",
               startAudioOnly: currentCall.callType === "audio",
               startSilent: false,
-
+              
               // Disable all authentication
               enableLobby: false,
               authenticationMode: "none",
               prejoinPageEnabled: false,
               enableWelcomePage: false,
               enableClosePage: false,
-
+              
               // Force guest mode
               guestDialOutEnabled: true,
               guestDialInEnabled: true,
               allowGuestDialOut: true,
               allowGuestDialIn: true,
-
+              
               // Basic settings
               resolution: 720,
               maxFullResolutionParticipants: 2,
@@ -213,20 +213,30 @@ const JitsiCall: React.FC = () => {
               liveStreamingEnabled: false,
               chatEnabled: false,
               desktopSharingEnabled: false,
-
+              
               // Use public domain
               hosts: {},
               websocket: "wss://meet.jit.si/xmpp-websocket",
-
+              
               // Additional bypass settings
               disableAudioLevels: true,
               disableModeratorIndicator: true,
               disable1On1Mode: false,
-
+              
               // Force public access
               userRoles: {},
               accessControl: {},
               roomPassword: "",
+              
+              // CRITICAL: Try to completely bypass lobby
+              lobby: {
+                enabled: false,
+                autoKnock: false,
+                autoKnockModerator: false,
+              },
+              
+              // Force anonymous mode
+              anonymous: true,
             }}
             interfaceConfigOverwrite={{
               TOOLBAR_BUTTONS: ["microphone", "camera", "hangup", "fullscreen"],

@@ -136,7 +136,7 @@ function* initiateCallSaga(
       callerName,
       callerAvatar: "/profile.jpg",
       status: "ringing" as const,
-      platform: "jitsi" as const,
+      platform: "webrtc" as const,
     };
 
     // Get socket

@@ -9,7 +9,7 @@ export interface CallData {
   callerAvatar?: string;
   status: "ringing" | "active" | "ended" | "declined" | "missed";
   roomName: string | null;
-  platform: "jitsi";
+  platform: "webrtc";
 }
 
 export interface CallingState {
@@ -75,7 +75,7 @@ export const callingSlice = createSlice({
         callerAvatar: "/profile.jpg",
         status: "ringing",
         roomName: null, // Will be set by saga
-        platform: "jitsi",
+        platform: "webrtc",
       };
       state.isCallDialogOpen = true;
     },
