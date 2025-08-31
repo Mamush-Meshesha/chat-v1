@@ -67,7 +67,9 @@ const JitsiCall: React.FC = () => {
               <h2 className="text-lg font-semibold">
                 {currentCall.callType === "audio" ? "Audio Call" : "Video Call"}
               </h2>
-              <p className="text-sm text-gray-300">Room: {roomName}</p>
+              <p className="text-sm text-gray-300">
+                Call ID: {currentCall.callId}
+              </p>
             </div>
             <button
               onClick={() => dispatch(endCall())}

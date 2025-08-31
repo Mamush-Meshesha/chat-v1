@@ -13,18 +13,6 @@ import {
 } from "../slice/callingSlice";
 import { RootState } from "../store";
 
-// Helper function to get current user ID from auth state
-function* getCurrentUserId(): Generator<any, string | undefined, any> {
-  const state: RootState = yield select();
-  return state.auth.user?._id;
-}
-
-// Helper function to get current user name from auth state
-function* getCurrentUserName(): Generator<any, string, any> {
-  const state: RootState = yield select();
-  return state.auth.user?.name || "User";
-}
-
 // Create call record in backend
 function* createCallRecord(callData: {
   receiverId: string;
@@ -78,22 +66,41 @@ function* initiateCallSaga(
 ): Generator<any, void, any> {
   try {
     console.log("🚀 CALLING SAGA: initiateCall started");
+    console.log("🔍 Action payload:", action.payload);
 
     const { receiverId, callType } = action.payload;
-    const callerId: string = yield getCurrentUserId();
-    const callerName: string = yield getCurrentUserName();
 
-    if (!callerId) {
-      throw new Error("User not authenticated");
+    // Debug authentication
+    console.log("🔐 Checking authentication...");
+    const authUser = localStorage.getItem("authUser");
+    console.log("🔐 localStorage authUser:", authUser ? "exists" : "null");
+
+    if (!authUser) {
+      throw new Error("No authentication data found in localStorage");
     }
 
-    // Get room name from state
-    const state: RootState = yield select();
-    const roomName = state.calling.roomName;
-
-    if (!roomName) {
-      throw new Error("Room name not generated");
+    let userData;
+    try {
+      userData = JSON.parse(authUser);
+      console.log("🔐 Parsed user data:", userData);
+    } catch (error) {
+      throw new Error("Invalid authentication data in localStorage");
     }
+
+    if (!userData._id || !userData.token) {
+      throw new Error("Missing user ID or token in authentication data");
+    }
+
+    const callerId: string = userData._id;
+    const callerName: string = userData.name || "User";
+
+    console.log("🔐 Caller ID:", callerId);
+    console.log("🔐 Caller Name:", callerName);
+
+    // Generate proper room name with caller and receiver IDs
+    const timestamp = Date.now();
+    const sortedIds = [callerId, receiverId].sort();
+    const roomName = `chat-${sortedIds[0]}-${sortedIds[1]}-${timestamp}`;
 
     console.log("🔍 Call data:", {
       callerId,
@@ -155,7 +162,9 @@ function* initiateCallSaga(
     console.log("🎯 Call initiated successfully!");
   } catch (error: any) {
     console.error("❌ Error in initiateCall saga:", error);
-    yield put(initiateCallFailure(error.message || "Failed to initiate call"));
+    const errorMessage = error.message || "Failed to initiate call";
+    console.error("❌ Error details:", errorMessage);
+    yield put(initiateCallFailure(errorMessage));
   }
 }
 

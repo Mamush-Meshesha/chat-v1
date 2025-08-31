@@ -63,6 +63,25 @@ const Home: FC<HomeProps> = () => {
         console.log("🔐 Home: authUser:", authUser);
         console.log("🔐 Home: authUser._id:", authUser?._id);
 
+        // Debug localStorage
+        const storedAuth = localStorage.getItem("authUser");
+        console.log(
+          "🔐 Home: localStorage authUser:",
+          storedAuth ? "exists" : "null"
+        );
+        if (storedAuth) {
+          try {
+            const parsed = JSON.parse(storedAuth);
+            console.log("🔐 Home: Parsed localStorage:", {
+              hasId: !!parsed._id,
+              hasName: !!parsed.name,
+              hasToken: !!parsed.token,
+            });
+          } catch (e) {
+            console.error("🔐 Home: Error parsing localStorage:", e);
+          }
+        }
+
         // Only create socket if user is authenticated
         if (!isAuthenticated || !authUser?._id) {
           console.log(

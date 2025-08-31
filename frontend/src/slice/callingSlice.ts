@@ -67,11 +67,9 @@ export const callingSlice = createSlice({
 
       // Generate room name
       const timestamp = Date.now();
-      const sortedIds = [
-        action.payload.receiverId,
-        action.payload.receiverId,
-      ].sort();
-      const roomName = `chat-${sortedIds[0]}-${sortedIds[1]}-${timestamp}`;
+      // We need the caller ID here, but it's not available yet
+      // The saga will generate the proper room name
+      const roomName = `temp-${action.payload.receiverId}-${timestamp}`;
 
       state.roomName = roomName;
       state.outgoingCallData = {
@@ -92,6 +90,7 @@ export const callingSlice = createSlice({
       state.isInitiatingCall = false;
       state.outgoingCallData = action.payload;
       state.currentCall = action.payload;
+      state.roomName = action.payload.roomName; // Update room name with the real one
       state.callError = null;
     },
 
