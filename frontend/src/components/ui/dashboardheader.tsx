@@ -1,7 +1,6 @@
 import { FC, useEffect, useRef } from "react";
 import { BsThreeDots } from "react-icons/bs";
 import { MdVideoCall, MdWifiCalling3 } from "react-icons/md";
-import UnifiedCallDialog from "./unifiedCallDialog";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store";
 import { initiateCallStart } from "../../slice/callingSlice";
@@ -71,6 +70,12 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
     console.log("🔌 socket prop:", socket);
     console.log("🔌 currentUserChat?._id:", currentUserChat?._id);
     console.log("🔌 socketManager.isConnected():", socketManager.isConnected());
+
+    // Wait for currentUserChat to be available
+    if (!currentUserChat?._id) {
+      console.log("⏳ Waiting for currentUserChat to be available...");
+      return;
+    }
 
     // Use socketManager.socket if available, otherwise fall back to socket prop
     const activeSocket = socketManager.socket || socket;
@@ -239,21 +244,22 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
   };
 
   // Handle call actions (delegated to Redux)
-  const handleAcceptCall = async () => {
-    console.log("🔄 Dashboard header: Call accepted - delegating to Redux");
-  };
+  // These functions are no longer needed since Redux handles everything
+  // const handleAcceptCall = async () => {
+  //   console.log("🔄 Dashboard header: Call accepted - delegating to Redux");
+  // };
 
-  const handleDeclineCall = () => {
-    console.log("🔄 Dashboard header: Call declined - delegating to Redux");
-  };
+  // const handleDeclineCall = () => {
+  //   console.log("🔄 Dashboard header: Call declined - delegating to Redux");
+  // };
 
-  const handleEndCall = async () => {
-    console.log("🔄 Dashboard header: Call ended - delegating to Redux");
-  };
+  // const handleEndCall = async () => {
+  //   console.log("🔄 Dashboard header: Call ended - delegating to Redux");
+  // };
 
-  const handleCancelCall = async () => {
-    console.log("🔄 Dashboard header: Call cancelled - delegating to Redux");
-  };
+  // const handleCancelCall = async () => {
+  //   console.log("🔄 Dashboard header: Call cancelled - delegating to Redux");
+  // };
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-3">
@@ -315,27 +321,7 @@ const Dashboardheader: FC<DashboardheaderProps> = ({
       </div>
 
       {/* Call Dialog */}
-      {isCallDialogOpen && outgoingCallData && (
-        <UnifiedCallDialog
-          isOpen={isCallDialogOpen}
-          onClose={() => {
-            // This will be handled by Redux
-          }}
-          callType={outgoingCallData.callType}
-          callerName={outgoingCallData.callerName}
-          callerAvatar={outgoingCallData.callerAvatar}
-          isIncoming={false}
-          onAccept={handleAcceptCall}
-          onDecline={handleDeclineCall}
-          onEndCall={handleEndCall}
-          onCancel={handleCancelCall}
-          callData={outgoingCallData}
-          onCallEnded={() => {
-            console.log("🔄 Call ended, refreshing call history...");
-            // This will be handled by Redux
-          }}
-        />
-      )}
+      {/* CallDialog component handles its own state via Redux */}
     </div>
   );
 };

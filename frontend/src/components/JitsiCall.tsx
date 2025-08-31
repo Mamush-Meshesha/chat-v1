@@ -32,18 +32,26 @@ const JitsiCall: React.FC = () => {
   const checkMediaPermissions = async () => {
     try {
       if (currentCall?.callType === "video") {
-        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoStream.getTracks().forEach(track => track.stop());
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        videoStream.getTracks().forEach((track) => track.stop());
         setMediaPermission(true);
       } else {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioStream.getTracks().forEach(track => track.stop());
+        const audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        audioStream.getTracks().forEach((track) => track.stop());
         setMediaPermission(true);
       }
     } catch (error) {
       console.error("❌ Media permission error:", error);
       setMediaPermission(false);
-      setJitsiError(`Media permission denied: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setJitsiError(
+        `Media permission denied: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -73,11 +81,11 @@ const JitsiCall: React.FC = () => {
         },
         conferenceFailed: (event: any) => {
           console.error("❌ Conference failed:", event);
-          setJitsiError(`Conference failed: ${event.error || 'Unknown error'}`);
+          setJitsiError(`Conference failed: ${event.error || "Unknown error"}`);
         },
         mediaError: (event: any) => {
           console.error("❌ Media error:", event);
-          setJitsiError(`Media error: ${event.error || 'Unknown error'}`);
+          setJitsiError(`Media error: ${event.error || "Unknown error"}`);
         },
         // Add more event listeners for debugging
         conferenceJoined: () => {
@@ -96,7 +104,7 @@ const JitsiCall: React.FC = () => {
           console.log("📹 Video mute status changed:", event.muted);
         },
       });
-      
+
       console.log("✅ All event listeners added successfully");
     } catch (error) {
       console.error("❌ Error setting up Jitsi API:", error);
@@ -118,12 +126,13 @@ const JitsiCall: React.FC = () => {
     return (
       <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
         <div className="bg-gray-900 p-6 rounded-lg text-white text-center">
-          <h2 className="text-xl font-semibold mb-4">Media Permission Required</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            Media Permission Required
+          </h2>
           <p className="mb-4">
-            {currentCall.callType === "video" 
+            {currentCall.callType === "video"
               ? "Camera and microphone access is required for video calls."
-              : "Microphone access is required for audio calls."
-            }
+              : "Microphone access is required for audio calls."}
           </p>
           <button
             onClick={() => checkMediaPermissions()}
@@ -156,9 +165,7 @@ const JitsiCall: React.FC = () => {
                 Call ID: {currentCall.callId}
               </p>
               {jitsiError && (
-                <p className="text-sm text-red-400 mt-1">
-                  Error: {jitsiError}
-                </p>
+                <p className="text-sm text-red-400 mt-1">Error: {jitsiError}</p>
               )}
             </div>
             <button
@@ -182,45 +189,28 @@ const JitsiCall: React.FC = () => {
             configOverwrite={{
               startWithAudioMuted: false,
               startWithVideoMuted: currentCall.callType === "audio",
-              disableAudioLevels: false,
-              maxFullResolutionParticipants: 2,
-              maxThumbnails: 2,
-              disableModeratorIndicator: true,
-              disable1On1Mode: false,
-              chatEnabled: true,
-              desktopSharingEnabled: true,
-              desktopSharingSources: ["screen", "window", "tab"],
-              // Basic settings to avoid members-only issues
               startAudioOnly: currentCall.callType === "audio",
               startSilent: false,
-              // Disable lobby completely
+              // Disable lobby and authentication
               enableLobby: false,
+              authenticationMode: "none",
               // Allow anyone to join
               hosts: {},
-              // Disable authentication
-              authenticationMode: "none",
-              // Connection settings
-              websocket: "wss://meet.jit.si/xmpp-websocket",
-              // Disable features that might cause issues
-              enableClosePage: false,
-              enableWelcomePage: false,
-              // Media settings
+              // Basic media settings
               resolution: 720,
-              constraints: {
-                video: {
-                  height: {
-                    ideal: 720,
-                    max: 720,
-                    min: 180
-                  }
-                }
-              },
-              // Disable recording and streaming
+              maxFullResolutionParticipants: 2,
+              // Disable unnecessary features
               fileRecordingsEnabled: false,
               liveStreamingEnabled: false,
               // Allow guests
               allowGuestDialOut: false,
               allowGuestDialIn: false,
+              // Disable prejoin page
+              prejoinPageEnabled: false,
+              // Ensure public access
+              membersOnly: false,
+              // Disable waiting room
+              waitingRoomEnabled: false,
             }}
             interfaceConfigOverwrite={{
               TOOLBAR_BUTTONS: [

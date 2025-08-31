@@ -8,7 +8,7 @@ export interface CallData {
   callerName: string;
   callerAvatar?: string;
   status: "ringing" | "active" | "ended" | "declined" | "missed";
-  roomName: string;
+  roomName: string | null;
   platform: "jitsi";
 }
 
@@ -64,23 +64,17 @@ export const callingSlice = createSlice({
     ) => {
       state.isInitiatingCall = true;
       state.callError = null;
-
-      // Generate room name
-      const timestamp = Date.now();
-      // We need the caller ID here, but it's not available yet
-      // The saga will generate the proper room name
-      const roomName = `temp-${action.payload.receiverId}-${timestamp}`;
-
-      state.roomName = roomName;
+      // Don't set room name here - let the saga handle it
+      state.roomName = null;
       state.outgoingCallData = {
-        callId: `outgoing-${timestamp}`,
+        callId: `outgoing-${Date.now()}`,
         callerId: "", // Will be set by saga
         receiverId: action.payload.receiverId,
         callType: action.payload.callType,
         callerName: "You",
         callerAvatar: "/profile.jpg",
         status: "ringing",
-        roomName,
+        roomName: null, // Will be set by saga
         platform: "jitsi",
       };
       state.isCallDialogOpen = true;

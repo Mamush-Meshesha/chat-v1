@@ -271,28 +271,6 @@ const Home: FC<HomeProps> = () => {
     return () => clearInterval(healthCheck);
   }, [socket.current, authUser?._id, isAuthenticated]);
 
-  // Setup calling service when socket is available
-  useEffect(() => {
-    const setupCallingService = async () => {
-      if (socket.current) {
-        console.log("🔄 HOME: Setting up calling service with socket...");
-        console.log("🔄 HOME: Socket ID:", socket.current?.id);
-        console.log("🔄 HOME: Socket connected:", socket.current?.connected);
-        console.log("✅ HOME: Calling service setup complete");
-      }
-    };
-
-    setupCallingService();
-
-    return () => {
-      // Don't cleanup calling service on unmount, let it persist
-      console.log("Component unmounting, keeping calling service alive");
-    };
-  }, [socket.current]);
-
-  // Remove duplicate useEffect hooks that were setting up duplicate event listeners
-  // The event listeners are now set up in the main socket initialization useEffect
-
   // Mark messages as read when viewing a chat
   useEffect(() => {
     console.log("🔍 Home: currentUserChat changed:", currentUserChat);
