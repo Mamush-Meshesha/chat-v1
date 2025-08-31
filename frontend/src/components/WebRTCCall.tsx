@@ -23,6 +23,8 @@ const WebRTCCall: React.FC = () => {
     currentCall?.callType === "audio"
   );
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] =
+    useState<string>("Initializing...");
 
   console.log("✅ WebRTCCall: Rendering with data:", {
     isCallActive,
@@ -90,9 +92,38 @@ const WebRTCCall: React.FC = () => {
 
       // Handle connection state changes
       peerConnection.onconnectionstatechange = () => {
+        console.log(
+          "🔗 WebRTC connection state changed:",
+          peerConnection.connectionState
+        );
+        setConnectionStatus(`Connection: ${peerConnection.connectionState}`);
+
         if (peerConnection.connectionState === "connected") {
           setIsConnected(true);
+          setConnectionStatus("Connected");
           console.log("✅ WebRTC connection established");
+        } else if (peerConnection.connectionState === "failed") {
+          setConnectionStatus("Connection failed");
+          setError("Failed to establish connection");
+        } else if (peerConnection.connectionState === "disconnected") {
+          setConnectionStatus("Disconnected");
+          setIsConnected(false);
+        }
+      };
+
+      // Handle ICE connection state changes
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log(
+          "🧊 ICE connection state:",
+          peerConnection.iceConnectionState
+        );
+        if (peerConnection.iceConnectionState === "checking") {
+          setConnectionStatus("Establishing connection...");
+        } else if (peerConnection.iceConnectionState === "connected") {
+          setConnectionStatus("Connected");
+        } else if (peerConnection.iceConnectionState === "failed") {
+          setConnectionStatus("Connection failed");
+          setError("ICE connection failed");
         }
       };
 
@@ -105,6 +136,15 @@ const WebRTCCall: React.FC = () => {
       };
 
       console.log("✅ WebRTC call initialized");
+
+      // Log connection details
+      console.log("🔗 WebRTC connection details:", {
+        connectionState: peerConnection.connectionState,
+        iceConnectionState: peerConnection.iceConnectionState,
+        iceGatheringState: peerConnection.iceGatheringState,
+        localDescription: peerConnection.localDescription,
+        remoteDescription: peerConnection.remoteDescription,
+      });
     } catch (err) {
       console.error("❌ Error initializing WebRTC call:", err);
       setError(
@@ -190,9 +230,7 @@ const WebRTCCall: React.FC = () => {
               <p className="text-sm text-gray-300">
                 Call with {currentCall?.callerName}
               </p>
-              <p className="text-xs text-gray-400">
-                {isConnected ? "Connected" : "Connecting..."}
-              </p>
+              <p className="text-xs text-gray-400">{connectionStatus}</p>
             </div>
             <button
               onClick={handleEndCall}
@@ -217,7 +255,13 @@ const WebRTCCall: React.FC = () => {
               <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
                 <div className="text-center text-white">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-                  <p>Connecting...</p>
+                  <p>{connectionStatus}</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    {currentCall?.callType === "audio"
+                      ? "Audio call"
+                      : "Video call"}{" "}
+                    with {currentCall?.callerName}
+                  </p>
                 </div>
               </div>
             )}
