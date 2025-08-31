@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { JitsiMeeting } from "@jitsi/react-sdk";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
@@ -11,6 +11,8 @@ const JitsiCall: React.FC = () => {
   );
   const { user } = useSelector((state: RootState) => state.auth);
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
+  const [jitsiError, setJitsiError] = useState<string | null>(null);
+  const [mediaPermission, setMediaPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!currentCall || !roomName) {
@@ -22,30 +24,84 @@ const JitsiCall: React.FC = () => {
       currentCall,
       user: user?.name,
     });
+
+    // Check media permissions
+    checkMediaPermissions();
   }, [currentCall, roomName, user]);
+
+  const checkMediaPermissions = async () => {
+    try {
+      if (currentCall?.callType === "video") {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoStream.getTracks().forEach(track => track.stop());
+        setMediaPermission(true);
+      } else {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStream.getTracks().forEach(track => track.stop());
+        setMediaPermission(true);
+      }
+    } catch (error) {
+      console.error("❌ Media permission error:", error);
+      setMediaPermission(false);
+      setJitsiError(`Media permission denied: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
 
   const handleApiReady = (externalApi: any) => {
     console.log("✅ Jitsi API ready:", externalApi);
+    setJitsiError(null);
 
-    // Configure Jitsi API
-    externalApi.executeCommand("displayName", user?.name || "User");
+    try {
+      // Configure Jitsi API
+      externalApi.executeCommand("displayName", user?.name || "User");
+      console.log("✅ Display name set to:", user?.name || "User");
 
-    // Listen for participant joined
-    externalApi.addEventListeners({
-      participantJoined: () => {
-        console.log("👤 Participant joined the meeting");
-      },
-      participantLeft: () => {
-        console.log("👤 Participant left the meeting");
-      },
-      videoConferenceJoined: () => {
-        console.log("🎉 User joined the video conference");
-      },
-      videoConferenceLeft: () => {
-        console.log("🔚 User left the video conference");
-        dispatch(endCall());
-      },
-    });
+      // Listen for participant joined
+      externalApi.addEventListeners({
+        participantJoined: () => {
+          console.log("👤 Participant joined the meeting");
+        },
+        participantLeft: () => {
+          console.log("👤 Participant left the meeting");
+        },
+        videoConferenceJoined: () => {
+          console.log("🎉 User joined the video conference");
+        },
+        videoConferenceLeft: () => {
+          console.log("🔚 User left the video conference");
+          dispatch(endCall());
+        },
+        conferenceFailed: (event: any) => {
+          console.error("❌ Conference failed:", event);
+          setJitsiError(`Conference failed: ${event.error || 'Unknown error'}`);
+        },
+        mediaError: (event: any) => {
+          console.error("❌ Media error:", event);
+          setJitsiError(`Media error: ${event.error || 'Unknown error'}`);
+        },
+        // Add more event listeners for debugging
+        conferenceJoined: () => {
+          console.log("🎉 Conference joined successfully");
+        },
+        conferenceWillJoin: () => {
+          console.log("🔄 Conference will join...");
+        },
+        conferenceTerminated: () => {
+          console.log("🔚 Conference terminated");
+        },
+        audioMuteStatusChanged: (event: any) => {
+          console.log("🔇 Audio mute status changed:", event.muted);
+        },
+        videoMuteStatusChanged: (event: any) => {
+          console.log("📹 Video mute status changed:", event.muted);
+        },
+      });
+      
+      console.log("✅ All event listeners added successfully");
+    } catch (error) {
+      console.error("❌ Error setting up Jitsi API:", error);
+      setJitsiError(`Setup error: ${error}`);
+    }
   };
 
   const handleReadyToClose = () => {
@@ -55,6 +111,35 @@ const JitsiCall: React.FC = () => {
 
   if (!currentCall || !roomName) {
     return null;
+  }
+
+  // Show error if media permissions are denied
+  if (mediaPermission === false) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+        <div className="bg-gray-900 p-6 rounded-lg text-white text-center">
+          <h2 className="text-xl font-semibold mb-4">Media Permission Required</h2>
+          <p className="mb-4">
+            {currentCall.callType === "video" 
+              ? "Camera and microphone access is required for video calls."
+              : "Microphone access is required for audio calls."
+            }
+          </p>
+          <button
+            onClick={() => checkMediaPermissions()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mr-2"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => dispatch(endCall())}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+          >
+            End Call
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -70,6 +155,11 @@ const JitsiCall: React.FC = () => {
               <p className="text-sm text-gray-300">
                 Call ID: {currentCall.callId}
               </p>
+              {jitsiError && (
+                <p className="text-sm text-red-400 mt-1">
+                  Error: {jitsiError}
+                </p>
+              )}
             </div>
             <button
               onClick={() => dispatch(endCall())}
@@ -96,13 +186,41 @@ const JitsiCall: React.FC = () => {
               maxFullResolutionParticipants: 2,
               maxThumbnails: 2,
               disableModeratorIndicator: true,
-              enableLobbyChat: false,
               disable1On1Mode: false,
-              fileRecordingsEnabled: false,
-              liveStreamingEnabled: false,
               chatEnabled: true,
               desktopSharingEnabled: true,
               desktopSharingSources: ["screen", "window", "tab"],
+              // Basic settings to avoid members-only issues
+              startAudioOnly: currentCall.callType === "audio",
+              startSilent: false,
+              // Disable lobby completely
+              enableLobby: false,
+              // Allow anyone to join
+              hosts: {},
+              // Disable authentication
+              authenticationMode: "none",
+              // Connection settings
+              websocket: "wss://meet.jit.si/xmpp-websocket",
+              // Disable features that might cause issues
+              enableClosePage: false,
+              enableWelcomePage: false,
+              // Media settings
+              resolution: 720,
+              constraints: {
+                video: {
+                  height: {
+                    ideal: 720,
+                    max: 720,
+                    min: 180
+                  }
+                }
+              },
+              // Disable recording and streaming
+              fileRecordingsEnabled: false,
+              liveStreamingEnabled: false,
+              // Allow guests
+              allowGuestDialOut: false,
+              allowGuestDialIn: false,
             }}
             interfaceConfigOverwrite={{
               TOOLBAR_BUTTONS: [
@@ -150,8 +268,10 @@ const JitsiCall: React.FC = () => {
             onApiReady={handleApiReady}
             onReadyToClose={handleReadyToClose}
             getIFrameRef={(iframeRef) => {
-              iframeRef.style.height = "100%";
-              iframeRef.style.width = "100%";
+              if (iframeRef) {
+                iframeRef.style.height = "100%";
+                iframeRef.style.width = "100%";
+              }
             }}
           />
         </div>

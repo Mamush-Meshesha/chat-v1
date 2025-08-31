@@ -100,7 +100,7 @@ function* initiateCallSaga(
     // Generate proper room name with caller and receiver IDs
     const timestamp = Date.now();
     const sortedIds = [callerId, receiverId].sort();
-    const roomName = `chat-${sortedIds[0]}-${sortedIds[1]}-${timestamp}`;
+    const roomName = `call-${sortedIds[0]}-${sortedIds[1]}-${timestamp}`;
 
     console.log("🔍 Call data:", {
       callerId,
