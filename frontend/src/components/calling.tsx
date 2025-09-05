@@ -318,21 +318,19 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
     try {
       // Generate unique room name
       const generateRoomName = (
-        callerId: string,
-        receiverId: string
+        _callerId: string,
+        _receiverId: string
       ): string => {
-        const sortedIds = [callerId, receiverId].sort();
-        return `call-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
+        // Use a simpler room name format that works better with Daily.co
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 8);
+        return `room-${timestamp}-${randomId}`;
       };
 
-      // Generate Daily.co room URL with instant room creation
+      // Generate Daily.co room URL
       const generateDailyRoomUrl = (roomName: string): string => {
-        // Use Daily.co's instant room creation by adding ?instant=1
-        const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}?instant=1`;
-        console.log(
-          "🔗 Generated Daily.co room URL with instant creation from calling.tsx:",
-          url
-        );
+        const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+        console.log("🔗 Generated Daily.co room URL from calling.tsx:", url);
         return url;
       };
 

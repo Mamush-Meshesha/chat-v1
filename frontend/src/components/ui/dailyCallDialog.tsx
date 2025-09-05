@@ -39,16 +39,42 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
   // const [callStartTime, setCallStartTime] = useState<number | null>(null);
 
   // Generate unique room name
-  const generateRoomName = (callerId: string, receiverId: string): string => {
-    const sortedIds = [callerId, receiverId].sort();
-    return `call-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
+  const generateRoomName = (_callerId: string, _receiverId: string): string => {
+    // Use a simpler room name format that works better with Daily.co
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 8);
+    return `room-${timestamp}-${randomId}`;
   };
 
-  // Generate Daily.co room URL with instant room creation
+  // Create Daily.co room using API (unused for now)
+  // const createDailyRoom = async (roomName: string): Promise<string | null> => {
+  //   try {
+  //     console.log("🏗️ Creating Daily.co room:", roomName);
+  //
+  //     // For now, we'll use a simple approach - try to join directly
+  //     // In production, you would call your backend API to create the room
+  //     const roomUrl = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+  //
+  //     // Test if room exists by making a simple request
+  //     const response = await fetch(roomUrl, { method: 'HEAD' });
+  //
+  //     if (response.ok) {
+  //       console.log("✅ Room exists:", roomUrl);
+  //       return roomUrl;
+  //     } else {
+  //       console.log("⚠️ Room doesn't exist, will be created on first join:", roomUrl);
+  //       return roomUrl;
+  //     }
+  //   } catch (error) {
+  //     console.log("⚠️ Error checking room, proceeding with URL:", error);
+  //     return `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+  //   }
+  // };
+
+  // Generate Daily.co room URL
   const generateDailyRoomUrl = (roomName: string): string => {
-    // Use Daily.co's instant room creation by adding ?instant=1
-    const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}?instant=1`;
-    console.log("🔗 Generated Daily.co room URL with instant creation:", url);
+    const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+    console.log("🔗 Generated Daily.co room URL:", url);
     return url;
   };
 
@@ -107,7 +133,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
     try {
       console.log("🔄 Creating Daily iframe...");
 
-      // Create Daily iframe instance
+      // Create Daily iframe instance with instant room creation
       const iframe = DailyIframe.createFrame(dailyContainerRef.current, {
         showLeaveButton: false,
         showFullscreenButton: true,
@@ -118,6 +144,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
           height: "100%",
           border: "none",
         },
+        // Note: Daily.co will create rooms automatically when joined
       });
 
       console.log("✅ Daily iframe created successfully");

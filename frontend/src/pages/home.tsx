@@ -1032,7 +1032,7 @@ const Home: FC<HomeProps> = () => {
                 roomUrl: (outgoingCallData || incomingCallData)?.roomName
                   ? `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${
                       (outgoingCallData || incomingCallData)?.roomName
-                    }?instant=1`
+                    }`
                   : undefined,
               }
             : null
