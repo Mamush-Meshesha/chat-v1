@@ -59,7 +59,8 @@ router.post("/create-room", async (req, res) => {
       console.log("⚠️ Daily.co API error:", apiError.message);
     }
 
-    // Fallback: Generate simple room URL - Daily.co should create room automatically
+    // Fallback: Generate room URL for 1-1 call
+    // Use Daily.co's instant room creation for 1-1 calls
     const roomUrl = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
     console.log("✅ Daily.co room URL generated (fallback):", roomUrl);
 
