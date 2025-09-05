@@ -52,10 +52,23 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
 
   // Initialize Daily.co iframe
   const initializeDailyIframe = async (roomUrl: string) => {
+    // Wait for container to be available
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!dailyContainerRef.current && attempts < maxAttempts) {
+      console.log(
+        `⏳ Waiting for container... attempt ${attempts + 1}/${maxAttempts}`
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      attempts++;
+    }
+
     if (!dailyContainerRef.current || !callData) {
       console.error("❌ Missing container or call data:", {
         container: !!dailyContainerRef.current,
         callData: !!callData,
+        attempts: attempts,
       });
       return;
     }
@@ -138,8 +151,13 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       const roomName = generateRoomName(callData.callerId, callData.receiverId);
       const roomUrl = callData.roomUrl || generateDailyRoomUrl(roomName);
 
-      // Initialize Daily iframe
-      await initializeDailyIframe(roomUrl);
+      // Set call status to active first, then initialize iframe
+      setCallStatus("active");
+
+      // Wait a bit for the DOM to update, then initialize iframe
+      setTimeout(() => {
+        initializeDailyIframe(roomUrl);
+      }, 100);
     } catch (error) {
       console.error("Error accepting call:", error);
       setCallStatus("ended");
@@ -182,8 +200,13 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       const roomName = generateRoomName(callData.callerId, callData.receiverId);
       const roomUrl = callData.roomUrl || generateDailyRoomUrl(roomName);
 
-      // Initialize Daily iframe
-      await initializeDailyIframe(roomUrl);
+      // Set call status to active first, then initialize iframe
+      setCallStatus("active");
+
+      // Wait a bit for the DOM to update, then initialize iframe
+      setTimeout(() => {
+        initializeDailyIframe(roomUrl);
+      }, 100);
     } catch (error) {
       console.error("Error starting call:", error);
       setCallStatus("ended");
@@ -194,7 +217,11 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
   // Start call when component mounts (for outgoing calls)
   useEffect(() => {
     if (isOpen && callData && !isIncoming) {
-      handleStartCall();
+      // Add a small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        handleStartCall();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, callData, isIncoming]);
 
