@@ -1,8 +1,17 @@
 import express from "express";
 import { generateJWT } from "../utils/jaasJWT.js";
-import { protect } from "../middlewares/authMiddleware.js";
+import protect from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
+
+// Health check endpoint
+router.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "JaaS service is running",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // JaaS configuration - you should move these to environment variables
 const JAAS_APP_ID = process.env.JAAS_APP_ID || "your-app-id";

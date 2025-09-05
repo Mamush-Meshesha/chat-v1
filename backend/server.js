@@ -11,13 +11,13 @@ import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 
 dotenv.config();
 const app = express();
-const port = 5300;
+const port = process.env.PORT || 5300;
 
 connectDB();
 // body parser
 app.use(
   cors({
-    origin: "https://chat-v1-seven.vercel.app",
+    origin: process.env.FRONTEND_URL || "https://chat-v1-seven.vercel.app",
     credentials: true,
   })
 );
