@@ -77,9 +77,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       console.log("🏗️ Creating Daily.co room via API:", roomName);
 
       const response = await fetch(
-        `${
-          process.env.REACT_APP_API_BASE_URL || "https://mam-98fa.onrender.com"
-        }/api/daily/create-room`,
+        `https://mam-98fa.onrender.com/api/daily/create-room`,
         {
           method: "POST",
           headers: {
