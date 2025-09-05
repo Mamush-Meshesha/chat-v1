@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import dailyCallingService from "../../services/dailyCallingService";
+import DailyIframe from "@daily-co/daily-js";
 
 interface DailyCallDialogProps {
   isOpen: boolean;
@@ -33,13 +33,76 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
   const [callStatus, setCallStatus] = useState<
     "ringing" | "connecting" | "active" | "ended"
   >("ringing");
+  const [dailyIframe, setDailyIframe] = useState<any | null>(null);
   const dailyContainerRef = useRef<HTMLDivElement>(null);
+  // const [callStartTime, setCallStartTime] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (isOpen && callData) {
-      setCallStatus("ringing");
+  // Generate unique room name
+  const generateRoomName = (callerId: string, receiverId: string): string => {
+    const sortedIds = [callerId, receiverId].sort();
+    return `call-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
+  };
+
+  // Generate Daily.co room URL
+  const generateDailyRoomUrl = (roomName: string): string => {
+    // Replace with your actual Daily.co domain
+    return `https://your-domain.daily.co/${roomName}`;
+  };
+
+  // Initialize Daily.co iframe
+  const initializeDailyIframe = async (roomUrl: string) => {
+    if (!dailyContainerRef.current || !callData) return;
+
+    try {
+      // Create Daily iframe instance
+      const iframe = DailyIframe.createFrame(dailyContainerRef.current, {
+        showLeaveButton: false,
+        showFullscreenButton: true,
+        showLocalVideo: callData.callType === "video",
+        showParticipantsBar: true,
+        iframeStyle: {
+          width: "100%",
+          height: "100%",
+          border: "none",
+        },
+      });
+
+      // Set up event listeners
+      iframe
+        .on("loaded", () => {
+          console.log("Daily iframe loaded");
+        })
+        .on("joined-meeting", () => {
+          console.log("Joined Daily meeting");
+          // setCallStartTime(Date.now());
+          setCallStatus("active");
+          onAccept?.();
+        })
+        .on("left-meeting", () => {
+          console.log("Left Daily meeting");
+          handleEndCall();
+        })
+        .on("error", (error: any) => {
+          console.error("Daily iframe error:", error);
+          setCallStatus("ended");
+          onClose();
+        });
+
+      setDailyIframe(iframe);
+
+      // Join the meeting
+      await iframe.join({
+        url: roomUrl,
+        userName: callData.callerName,
+        // startWithAudioMuted: callData.callType === "video" ? false : true,
+        // startWithVideoMuted: callData.callType === "audio",
+      });
+    } catch (error) {
+      console.error("Error initializing Daily iframe:", error);
+      setCallStatus("ended");
+      onClose();
     }
-  }, [isOpen, callData]);
+  };
 
   const handleAcceptCall = async () => {
     if (!callData) return;
@@ -47,14 +110,12 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
     setCallStatus("connecting");
 
     try {
-      const success = await dailyCallingService.acceptCall(callData);
-      if (success) {
-        setCallStatus("active");
-        onAccept?.();
-      } else {
-        setCallStatus("ended");
-        onClose();
-      }
+      // Generate room name and URL
+      const roomName = generateRoomName(callData.callerId, callData.receiverId);
+      const roomUrl = callData.roomUrl || generateDailyRoomUrl(roomName);
+
+      // Initialize Daily iframe
+      await initializeDailyIframe(roomUrl);
     } catch (error) {
       console.error("Error accepting call:", error);
       setCallStatus("ended");
@@ -66,27 +127,39 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
     if (!callData) return;
 
     setCallStatus("ended");
-    await dailyCallingService.declineCall(callData);
     onDecline?.();
     onClose();
   };
 
   const handleEndCall = async () => {
     setCallStatus("ended");
-    await dailyCallingService.endCall();
+
+    if (dailyIframe) {
+      try {
+        await dailyIframe.leave();
+        dailyIframe.destroy();
+        setDailyIframe(null);
+      } catch (error) {
+        console.error("Error ending call:", error);
+      }
+    }
+
     onEnd?.();
     onClose();
   };
 
   const handleStartCall = async () => {
-    if (!dailyContainerRef.current) return;
+    if (!callData) return;
+
+    setCallStatus("connecting");
 
     try {
-      const success = await dailyCallingService.startCall(dailyContainerRef.current.id);
-      if (!success) {
-        setCallStatus("ended");
-        onClose();
-      }
+      // Generate room name and URL
+      const roomName = generateRoomName(callData.callerId, callData.receiverId);
+      const roomUrl = callData.roomUrl || generateDailyRoomUrl(roomName);
+
+      // Initialize Daily iframe
+      await initializeDailyIframe(roomUrl);
     } catch (error) {
       console.error("Error starting call:", error);
       setCallStatus("ended");
@@ -94,12 +167,21 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
     }
   };
 
-  // Start call when status becomes active
+  // Start call when component mounts (for outgoing calls)
   useEffect(() => {
-    if (callStatus === "active" && callData) {
+    if (isOpen && callData && !isIncoming) {
       handleStartCall();
     }
-  }, [callStatus, callData]);
+  }, [isOpen, callData, isIncoming]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (dailyIframe) {
+        dailyIframe.destroy();
+      }
+    };
+  }, [dailyIframe]);
 
   if (!isOpen || !callData) {
     return null;
@@ -235,7 +317,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
               </button>
             </div>
 
-            <div 
+            <div
               ref={dailyContainerRef}
               id="daily-call-container"
               className="flex-1 w-full bg-gray-100 rounded-lg"

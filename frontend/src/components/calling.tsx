@@ -5,7 +5,6 @@ import axios from "axios";
 import { MdOutlineCall, MdOutlineCallEnd } from "react-icons/md";
 import { FiSearch, FiFilter } from "react-icons/fi";
 import DailyCallDialog from "./ui/dailyCallDialog";
-import callingService from "../services/callingService";
 
 interface CallRecord {
   id: string;
@@ -317,38 +316,39 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
     }
 
     try {
+      // Generate unique room name
+      const generateRoomName = (
+        callerId: string,
+        receiverId: string
+      ): string => {
+        const sortedIds = [callerId, receiverId].sort();
+        return `call-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
+      };
+
+      // Generate Daily.co room URL
+      const generateDailyRoomUrl = (roomName: string): string => {
+        // Replace with your actual Daily.co domain
+        return `https://your-domain.daily.co/${roomName}`;
+      };
+
       // Prepare call data
+      const roomName = generateRoomName(authUser._id, call.userId);
+      const roomUrl = generateDailyRoomUrl(roomName);
+
       const callData = {
+        callId: `${authUser._id}-${call.userId}-${Date.now()}`,
         callerId: authUser._id,
         receiverId: call.userId,
         callType: call.callType,
         callerName: authUser.name || (authUser as any).username,
         callerAvatar: (authUser as any).avatar,
+        status: "ringing" as const,
+        roomUrl: roomUrl,
       };
 
-      // Initiate call using calling service
-      const success = await callingService.initiateCall(callData);
-
-      if (success) {
-        // Get the call data from the service
-        const activeCall = callingService.getCurrentCall();
-        if (activeCall) {
-                      // Ensure roomUrl is present for Daily.co
-            const callData = {
-              ...activeCall.callData,
-              roomUrl:
-                activeCall.callData.roomUrl ||
-                `https://your-domain.daily.co/call-${activeCall.callData.callerId}-${
-                  activeCall.callData.receiverId
-                }-${Date.now()}`,
-            };
-          setCurrentCall(callData);
-          setIsIncomingCall(false);
-          setIsCallDialogOpen(true);
-        }
-      } else {
-        console.error("Failed to initiate call");
-      }
+      setCurrentCall(callData);
+      setIsIncomingCall(false);
+      setIsCallDialogOpen(true);
     } catch (error) {
       console.error("Error initiating call:", error);
     }
@@ -356,7 +356,7 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
 
   const handleAcceptCall = () => {
     console.log("Call accepted");
-    // The Jitsi dialog will handle the actual call acceptance
+    // The Daily dialog will handle the actual call acceptance
   };
 
   const handleDeclineCall = () => {
