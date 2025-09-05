@@ -2,7 +2,7 @@ import express from "express";
 
 const router = express.Router();
 
-// Generate Daily.co room URL with instant creation
+// Create Daily.co room using REST API
 router.post("/create-room", async (req, res) => {
   try {
     const { roomName } = req.body;
@@ -11,12 +11,57 @@ router.post("/create-room", async (req, res) => {
       return res.status(400).json({ error: "Room name is required" });
     }
 
-    console.log("🏗️ Generating Daily.co room URL with instant creation:", roomName);
+    console.log("🏗️ Creating Daily.co room via REST API:", roomName);
 
-    // Generate room URL with instant creation parameters
-    const roomUrl = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}?instant=1&enablePrejoinUI=false&enableScreenshare=false&enableChat=false&enableKnocking=false`;
+    // Try to create room using Daily.co REST API
+    try {
+      const response = await fetch(`https://api.daily.co/v1/rooms`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.DAILY_CO_PRIVATE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: roomName,
+          properties: {
+            enable_prejoin_ui: false,
+            enable_screenshare: false,
+            enable_chat: false,
+            enable_knocking: false,
+            enable_recording: false,
+            enable_transcription: false,
+            max_participants: 2,
+            exp: Math.round(Date.now() / 1000) + 60 * 60, // 1 hour expiry
+          },
+        }),
+      });
 
-    console.log("✅ Daily.co room URL generated:", roomUrl);
+      if (response.ok) {
+        const roomData = await response.json();
+        console.log(
+          "✅ Daily.co room created successfully via API:",
+          roomData.name
+        );
+
+        return res.json({
+          success: true,
+          room: {
+            name: roomData.name,
+            url: roomData.url,
+            id: roomData.id,
+          },
+        });
+      } else {
+        const errorData = await response.json();
+        console.log("⚠️ Daily.co API failed:", response.status, errorData);
+      }
+    } catch (apiError) {
+      console.log("⚠️ Daily.co API error:", apiError.message);
+    }
+
+    // Fallback: Generate simple room URL - Daily.co should create room automatically
+    const roomUrl = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+    console.log("✅ Daily.co room URL generated (fallback):", roomUrl);
 
     res.json({
       success: true,
@@ -27,9 +72,9 @@ router.post("/create-room", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Error generating Daily.co room URL:", error);
+    console.error("❌ Error creating Daily.co room:", error);
     res.status(500).json({
-      error: "Failed to generate room URL",
+      error: "Failed to create room",
       details: error.message,
     });
   }
