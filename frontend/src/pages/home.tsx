@@ -77,8 +77,20 @@ const Home: FC<HomeProps> = () => {
       isCallActive,
       currentCall,
       roomName,
+      isCallDialogOpen,
+      isIncomingCall,
+      outgoingCallData: outgoingCallData ? "exists" : "null",
+      incomingCallData: incomingCallData ? "exists" : "null",
     });
-  }, [isCallActive, currentCall, roomName]);
+  }, [
+    isCallActive,
+    currentCall,
+    roomName,
+    isCallDialogOpen,
+    isIncomingCall,
+    outgoingCallData,
+    incomingCallData,
+  ]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeUser, setActiveUser] = useState([]);

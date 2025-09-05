@@ -45,14 +45,33 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
 
   // Generate Daily.co room URL
   const generateDailyRoomUrl = (roomName: string): string => {
-    return `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+    const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
+    console.log("🔗 Generated Daily.co room URL:", url);
+    return url;
   };
 
   // Initialize Daily.co iframe
   const initializeDailyIframe = async (roomUrl: string) => {
-    if (!dailyContainerRef.current || !callData) return;
+    if (!dailyContainerRef.current || !callData) {
+      console.error("❌ Missing container or call data:", {
+        container: !!dailyContainerRef.current,
+        callData: !!callData,
+      });
+      return;
+    }
+
+    console.log("🚀 Initializing Daily.co iframe with:", {
+      roomUrl,
+      callData: {
+        callerName: callData.callerName,
+        callType: callData.callType,
+        callId: callData.callId,
+      },
+    });
 
     try {
+      console.log("🔄 Creating Daily iframe...");
+
       // Create Daily iframe instance
       const iframe = DailyIframe.createFrame(dailyContainerRef.current, {
         showLeaveButton: false,
@@ -66,28 +85,32 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
         },
       });
 
+      console.log("✅ Daily iframe created successfully");
+
       // Set up event listeners
       iframe
         .on("loaded", () => {
-          console.log("Daily iframe loaded");
+          console.log("📱 Daily iframe loaded");
         })
         .on("joined-meeting", () => {
-          console.log("Joined Daily meeting");
+          console.log("🎉 Joined Daily meeting successfully");
           // setCallStartTime(Date.now());
           setCallStatus("active");
           onAccept?.();
         })
         .on("left-meeting", () => {
-          console.log("Left Daily meeting");
+          console.log("👋 Left Daily meeting");
           handleEndCall();
         })
         .on("error", (error: any) => {
-          console.error("Daily iframe error:", error);
+          console.error("❌ Daily iframe error:", error);
           setCallStatus("ended");
           onClose();
         });
 
       setDailyIframe(iframe);
+
+      console.log("🔄 Attempting to join meeting...");
 
       // Join the meeting
       await iframe.join({
@@ -96,8 +119,10 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
         // startWithAudioMuted: callData.callType === "video" ? false : true,
         // startWithVideoMuted: callData.callType === "audio",
       });
+
+      console.log("✅ Join request sent successfully");
     } catch (error) {
-      console.error("Error initializing Daily iframe:", error);
+      console.error("❌ Error initializing Daily iframe:", error);
       setCallStatus("ended");
       onClose();
     }
