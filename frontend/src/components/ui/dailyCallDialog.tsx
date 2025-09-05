@@ -40,10 +40,10 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
 
   // Generate unique room name
   const generateRoomName = (_callerId: string, _receiverId: string): string => {
-    // Use a simpler room name format that works better with Daily.co
+    // Use a UUID-like format that might work better with Daily.co
     const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 8);
-    return `room-${timestamp}-${randomId}`;
+    const random = Math.random().toString(36).substring(2, 15);
+    return `room-${timestamp}-${random}`;
   };
 
   // Create Daily.co room using API (unused for now)
