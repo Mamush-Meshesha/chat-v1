@@ -134,15 +134,15 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       }
     }
 
-    // Wait for container to be available
+    // Wait for container to be available with more attempts
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 20; // Increased from 10 to 20
 
     while (!dailyContainerRef.current && attempts < maxAttempts) {
       console.log(
         `⏳ Waiting for container... attempt ${attempts + 1}/${maxAttempts}`
       );
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 200)); // Increased from 100ms to 200ms
       attempts++;
     }
 
@@ -152,6 +152,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
         callData: !!callData,
         attempts: attempts,
       });
+      setIsInitializing(false);
       return;
     }
 
@@ -181,13 +182,12 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
         showLeaveButton: false,
         showFullscreenButton: true,
         showLocalVideo: callData.callType === "video",
-        showParticipantsBar: true,
+        showParticipantsBar: false, // Hide participants bar for 1-1 calls
         iframeStyle: {
           width: "100%",
           height: "100%",
           border: "none",
         },
-        // Note: Daily.co will create rooms automatically when joined
       });
 
       console.log("✅ Daily iframe created successfully");
@@ -244,13 +244,14 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       // Generate room name
       const roomName = generateRoomName(callData.callerId, callData.receiverId);
 
-      // Set call status to active first, then initialize iframe
+      // Set call status to active first to render the container
       setCallStatus("active");
 
-      // Wait a bit for the DOM to update, then initialize iframe
+      // Wait longer for the DOM to update and container to be rendered
       setTimeout(() => {
+        console.log("🔄 Attempting to initialize iframe after DOM update...");
         initializeDailyIframe(roomName);
-      }, 100);
+      }, 500); // Increased timeout to 500ms
     } catch (error) {
       console.error("Error accepting call:", error);
       setCallStatus("ended");
@@ -292,13 +293,14 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       // Generate room name
       const roomName = generateRoomName(callData.callerId, callData.receiverId);
 
-      // Set call status to active first, then initialize iframe
+      // Set call status to active first to render the container
       setCallStatus("active");
 
-      // Wait a bit for the DOM to update, then initialize iframe
+      // Wait longer for the DOM to update and container to be rendered
       setTimeout(() => {
+        console.log("🔄 Attempting to initialize iframe after DOM update...");
         initializeDailyIframe(roomName);
-      }, 100);
+      }, 500); // Increased timeout to 500ms
     } catch (error) {
       console.error("Error starting call:", error);
       setCallStatus("ended");
