@@ -4,7 +4,7 @@ import Dashboardheader from "../components/ui/dashboardheader";
 import Dashboardbottom from "../components/ui/dashboardbottom";
 import Header from "../components/header";
 import Notification from "../components/ui/notification";
-import CallDialog from "../components/CallDialog";
+import DailyCallDialog from "../components/ui/dailyCallDialog";
 import WebRTCCall from "../components/WebRTCCall";
 import { FaCheck } from "react-icons/fa6";
 import { useSelector, useDispatch } from "react-redux";
@@ -19,7 +19,12 @@ import {
   setCurrentUser,
 } from "../slice/userSlice";
 import { logout } from "../slice/authSlice";
-import { receiveIncomingCall } from "../slice/callingSlice";
+import {
+  receiveIncomingCall,
+  acceptCallStart,
+  declineCall,
+  endCall,
+} from "../slice/callingSlice";
 import socketManager from "../services/socketManager";
 
 interface HomeProps {}
@@ -53,6 +58,18 @@ const Home: FC<HomeProps> = () => {
     (state: RootState) => state.calling.currentCall
   );
   const roomName = useSelector((state: RootState) => state.calling.roomName);
+  const isCallDialogOpen = useSelector(
+    (state: RootState) => state.calling.isCallDialogOpen
+  );
+  const isIncomingCall = useSelector(
+    (state: RootState) => state.calling.isIncomingCall
+  );
+  const outgoingCallData = useSelector(
+    (state: RootState) => state.calling.outgoingCallData
+  );
+  const incomingCallData = useSelector(
+    (state: RootState) => state.calling.incomingCallData
+  );
 
   // Debug calling state
   useEffect(() => {
@@ -968,8 +985,59 @@ const Home: FC<HomeProps> = () => {
         </div>
       </div>
 
-      {/* Redux Calling Components */}
-      <CallDialog />
+      {/* Daily.co Calling Components */}
+      <DailyCallDialog
+        isOpen={isCallDialogOpen || isIncomingCall}
+        onClose={() => {
+          if (isIncomingCall) {
+            dispatch(declineCall());
+          } else {
+            dispatch(endCall());
+          }
+        }}
+        callData={
+          outgoingCallData || incomingCallData
+            ? {
+                callId: (outgoingCallData || incomingCallData)?.callId || "",
+                callerId:
+                  (outgoingCallData || incomingCallData)?.callerId || "",
+                receiverId:
+                  (outgoingCallData || incomingCallData)?.receiverId || "",
+                callType:
+                  (outgoingCallData || incomingCallData)?.callType || "video",
+                callerName:
+                  (outgoingCallData || incomingCallData)?.callerName || "",
+                callerAvatar: (outgoingCallData || incomingCallData)
+                  ?.callerAvatar,
+                status: (() => {
+                  const status =
+                    (outgoingCallData || incomingCallData)?.status || "ringing";
+                  // Map Redux status to DailyCallDialog status
+                  if (status === "declined" || status === "missed")
+                    return "ended";
+                  return status as "ringing" | "active" | "ended";
+                })(),
+                roomUrl: (outgoingCallData || incomingCallData)?.roomName
+                  ? `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${
+                      (outgoingCallData || incomingCallData)?.roomName
+                    }`
+                  : undefined,
+              }
+            : null
+        }
+        isIncoming={isIncomingCall}
+        onAccept={() => {
+          if (incomingCallData) {
+            dispatch(acceptCallStart());
+          }
+        }}
+        onDecline={() => {
+          dispatch(declineCall());
+        }}
+        onEnd={() => {
+          dispatch(endCall());
+        }}
+      />
       {isCallActive && <WebRTCCall />}
 
       {/* Notifications */}

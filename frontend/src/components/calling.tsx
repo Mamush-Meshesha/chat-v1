@@ -327,8 +327,7 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
 
       // Generate Daily.co room URL
       const generateDailyRoomUrl = (roomName: string): string => {
-        // Replace with your actual Daily.co domain
-        return `https://your-domain.daily.co/${roomName}`;
+        return `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
       };
 
       // Prepare call data
