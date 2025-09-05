@@ -71,15 +71,51 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
   //   }
   // };
 
-  // Generate Daily.co room URL
+  // Create Daily.co room via backend API
+  const createDailyRoom = async (roomName: string): Promise<string | null> => {
+    try {
+      console.log("🏗️ Creating Daily.co room via API:", roomName);
+
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_BASE_URL || "https://mam-98fa.onrender.com"
+        }/api/daily/create-room`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ roomName }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.room) {
+        console.log("✅ Daily.co room created successfully:", data.room.url);
+        return data.room.url;
+      } else {
+        throw new Error(data.error || "Failed to create room");
+      }
+    } catch (error) {
+      console.error("❌ Error creating Daily.co room:", error);
+      return null;
+    }
+  };
+
+  // Generate Daily.co room URL (fallback)
   const generateDailyRoomUrl = (roomName: string): string => {
     const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
-    console.log("🔗 Generated Daily.co room URL:", url);
+    console.log("🔗 Generated Daily.co room URL (fallback):", url);
     return url;
   };
 
   // Initialize Daily.co iframe
-  const initializeDailyIframe = async (roomUrl: string) => {
+  const initializeDailyIframe = async (roomName: string) => {
     // Prevent multiple simultaneous initializations
     if (isInitializing) {
       console.log("⚠️ Already initializing iframe, skipping...");
@@ -121,8 +157,17 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       return;
     }
 
+    // First, create the room via API
+    const roomUrl = await createDailyRoom(roomName);
+
+    if (!roomUrl) {
+      console.error("❌ Failed to create Daily.co room, using fallback URL");
+      const fallbackUrl = generateDailyRoomUrl(roomName);
+      console.log("🔄 Using fallback URL:", fallbackUrl);
+    }
+
     console.log("🚀 Initializing Daily.co iframe with:", {
-      roomUrl,
+      roomUrl: roomUrl || generateDailyRoomUrl(roomName),
       callData: {
         callerName: callData.callerName,
         callType: callData.callType,
@@ -176,7 +221,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
 
       // Join the meeting
       await iframe.join({
-        url: roomUrl,
+        url: roomUrl || generateDailyRoomUrl(roomName),
         userName: callData.callerName,
         // startWithAudioMuted: callData.callType === "video" ? false : true,
         // startWithVideoMuted: callData.callType === "audio",
@@ -198,16 +243,15 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
     setCallStatus("connecting");
 
     try {
-      // Generate room name and URL
+      // Generate room name
       const roomName = generateRoomName(callData.callerId, callData.receiverId);
-      const roomUrl = callData.roomUrl || generateDailyRoomUrl(roomName);
 
       // Set call status to active first, then initialize iframe
       setCallStatus("active");
 
       // Wait a bit for the DOM to update, then initialize iframe
       setTimeout(() => {
-        initializeDailyIframe(roomUrl);
+        initializeDailyIframe(roomName);
       }, 100);
     } catch (error) {
       console.error("Error accepting call:", error);
@@ -247,16 +291,15 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
     setCallStatus("connecting");
 
     try {
-      // Generate room name and URL
+      // Generate room name
       const roomName = generateRoomName(callData.callerId, callData.receiverId);
-      const roomUrl = callData.roomUrl || generateDailyRoomUrl(roomName);
 
       // Set call status to active first, then initialize iframe
       setCallStatus("active");
 
       // Wait a bit for the DOM to update, then initialize iframe
       setTimeout(() => {
-        initializeDailyIframe(roomUrl);
+        initializeDailyIframe(roomName);
       }, 100);
     } catch (error) {
       console.error("Error starting call:", error);
