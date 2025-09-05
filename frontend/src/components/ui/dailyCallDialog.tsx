@@ -35,6 +35,7 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
   >("ringing");
   const [dailyIframe, setDailyIframe] = useState<any | null>(null);
   const dailyContainerRef = useRef<HTMLDivElement>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   // const [callStartTime, setCallStartTime] = useState<number | null>(null);
 
   // Generate unique room name
@@ -52,6 +53,26 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
 
   // Initialize Daily.co iframe
   const initializeDailyIframe = async (roomUrl: string) => {
+    // Prevent multiple simultaneous initializations
+    if (isInitializing) {
+      console.log("⚠️ Already initializing iframe, skipping...");
+      return;
+    }
+
+    setIsInitializing(true);
+
+    // Check if iframe already exists
+    if (dailyIframe) {
+      console.log("⚠️ Daily iframe already exists, cleaning up first...");
+      try {
+        await dailyIframe.leave();
+        dailyIframe.destroy();
+        setDailyIframe(null);
+      } catch (error) {
+        console.log("Error cleaning up existing iframe:", error);
+      }
+    }
+
     // Wait for container to be available
     let attempts = 0;
     const maxAttempts = 10;
@@ -138,6 +159,8 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
       console.error("❌ Error initializing Daily iframe:", error);
       setCallStatus("ended");
       onClose();
+    } finally {
+      setIsInitializing(false);
     }
   };
 
@@ -229,8 +252,14 @@ const DailyCallDialog: React.FC<DailyCallDialogProps> = ({
   useEffect(() => {
     return () => {
       if (dailyIframe) {
-        dailyIframe.destroy();
+        console.log("🧹 Cleaning up Daily iframe on unmount");
+        try {
+          dailyIframe.destroy();
+        } catch (error) {
+          console.log("Error destroying iframe:", error);
+        }
       }
+      setIsInitializing(false);
     };
   }, [dailyIframe]);
 
