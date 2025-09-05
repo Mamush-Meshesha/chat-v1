@@ -1,8 +1,6 @@
 import { Socket } from "socket.io-client";
 import socketManager from "./socketManager";
-// import axios from "axios";
-// import { getApiUrl } from "../config/config";
-import jaasCallingService from "./jaasCallingService";
+import dailyCallingService from "./dailyCallingService";
 
 export interface CallData {
   callId: string;
@@ -12,8 +10,8 @@ export interface CallData {
   callerName: string;
   callerAvatar?: string;
   status: "ringing" | "active" | "ended";
-  roomName?: string;
-  jwt?: string;
+  roomUrl?: string;
+  token?: string;
 }
 
 export interface WebRTCCall {
@@ -630,12 +628,12 @@ class CallingService {
   async initiateCall(
     callData: Omit<CallData, "callId" | "status">
   ): Promise<boolean> {
-    console.log("=== CALLING SERVICE: initiateCall (JaaS) ===");
+    console.log("=== CALLING SERVICE: initiateCall (Daily.co) ===");
     console.log("Call data received:", callData);
 
     try {
-      // Use JaaS calling service instead of WebRTC
-      const success = await jaasCallingService.initiateCall({
+      // Use Daily calling service instead of WebRTC
+      const success = await dailyCallingService.initiateCall({
         callerId: callData.callerId,
         receiverId: callData.receiverId,
         callType: callData.callType,
@@ -644,22 +642,24 @@ class CallingService {
       });
 
       if (success) {
-        // Get the JaaS call data
-        const jaasCall = jaasCallingService.getCurrentCall();
-        if (jaasCall) {
-          // Convert JaaS call data to our format
+        // Get the Daily call data
+        const dailyCall = dailyCallingService.getCurrentCall();
+        if (dailyCall) {
+          // Convert Daily call data to our format
           this.activeCall = {
             localStream: null,
             remoteStream: null,
             peerConnection: null,
             callData: {
-              callId: jaasCall.callId,
-              callerId: jaasCall.callerId,
-              receiverId: jaasCall.receiverId,
-              callType: jaasCall.callType,
-              callerName: jaasCall.callerName,
-              callerAvatar: jaasCall.callerAvatar,
-              status: jaasCall.status,
+              callId: dailyCall.callId,
+              callerId: dailyCall.callerId,
+              receiverId: dailyCall.receiverId,
+              callType: dailyCall.callType,
+              callerName: dailyCall.callerName,
+              callerAvatar: dailyCall.callerAvatar,
+              status: dailyCall.status,
+              roomUrl: dailyCall.roomUrl,
+              token: dailyCall.token,
             },
           };
 
@@ -669,17 +669,17 @@ class CallingService {
               callerId: callData.callerId,
               receiverId: callData.receiverId,
               callType: callData.callType,
-              callId: jaasCall.callId,
-              roomName: jaasCall.roomName,
+              callId: dailyCall.callId,
+              roomUrl: dailyCall.roomUrl,
             });
           }
 
-          console.log("✅ JaaS call initiated successfully");
+          console.log("✅ Daily call initiated successfully");
           return true;
         }
       }
 
-      console.error("❌ Failed to initiate JaaS call");
+      console.error("❌ Failed to initiate Daily call");
       return false;
     } catch (error) {
       console.error("❌ Error in initiateCall:", error);
@@ -690,11 +690,11 @@ class CallingService {
 
   async acceptCall(callData: CallData): Promise<boolean> {
     try {
-      console.log("🔄 CALLING SERVICE: acceptCall (JaaS) called");
+      console.log("🔄 CALLING SERVICE: acceptCall (Daily.co) called");
       console.log("🔄 Call data received:", callData);
 
-      // Convert CallData to JaaSCallData format
-      const jaasCallData = {
+      // Convert CallData to DailyCallData format
+      const dailyCallData = {
         callId: callData.callId,
         callerId: callData.callerId,
         receiverId: callData.receiverId,
@@ -702,39 +702,40 @@ class CallingService {
         callerName: callData.callerName,
         callerAvatar: callData.callerAvatar,
         status: callData.status,
-        roomName:
-          (callData as { roomName?: string }).roomName ||
-          `call-${callData.callerId}-${callData.receiverId}-${Date.now()}`,
+        roomUrl: callData.roomUrl,
+        token: callData.token,
       };
 
-      // Use JaaS calling service
-      const success = await jaasCallingService.acceptCall(jaasCallData);
+      // Use Daily calling service
+      const success = await dailyCallingService.acceptCall(dailyCallData);
 
       if (success) {
-        // Update our active call with JaaS data
-        const jaasCall = jaasCallingService.getCurrentCall();
-        if (jaasCall) {
+        // Update our active call with Daily data
+        const dailyCall = dailyCallingService.getCurrentCall();
+        if (dailyCall) {
           this.activeCall = {
             localStream: null,
             remoteStream: null,
             peerConnection: null,
             callData: {
-              callId: jaasCall.callId,
-              callerId: jaasCall.callerId,
-              receiverId: jaasCall.receiverId,
-              callType: jaasCall.callType,
-              callerName: jaasCall.callerName,
-              callerAvatar: jaasCall.callerAvatar,
-              status: jaasCall.status,
+              callId: dailyCall.callId,
+              callerId: dailyCall.callerId,
+              receiverId: dailyCall.receiverId,
+              callType: dailyCall.callType,
+              callerName: dailyCall.callerName,
+              callerAvatar: dailyCall.callerAvatar,
+              status: dailyCall.status,
+              roomUrl: dailyCall.roomUrl,
+              token: dailyCall.token,
             },
           };
 
-          console.log("✅ JaaS call accepted successfully");
+          console.log("✅ Daily call accepted successfully");
           return true;
         }
       }
 
-      console.error("❌ Failed to accept JaaS call");
+      console.error("❌ Failed to accept Daily call");
       return false;
     } catch (error) {
       console.error("Failed to accept call:", error);
@@ -745,10 +746,10 @@ class CallingService {
 
   async declineCall(callData: CallData) {
     try {
-      console.log("🔄 Declining call (JaaS):", callData);
+      console.log("🔄 Declining call (Daily.co):", callData);
 
-      // Convert CallData to JaaSCallData format
-      const jaasCallData = {
+      // Convert CallData to DailyCallData format
+      const dailyCallData = {
         callId: callData.callId,
         callerId: callData.callerId,
         receiverId: callData.receiverId,
@@ -756,13 +757,12 @@ class CallingService {
         callerName: callData.callerName,
         callerAvatar: callData.callerAvatar,
         status: callData.status,
-        roomName:
-          (callData as { roomName?: string }).roomName ||
-          `call-${callData.callerId}-${callData.receiverId}-${Date.now()}`,
+        roomUrl: callData.roomUrl,
+        token: callData.token,
       };
 
-      // Use JaaS calling service
-      await jaasCallingService.declineCall(jaasCallData);
+      // Use Daily calling service
+      await dailyCallingService.declineCall(dailyCallData);
 
       // Emit socket events for cleanup
       const socket = await this.ensureSocket();
@@ -787,10 +787,10 @@ class CallingService {
   async endCall() {
     try {
       if (this.activeCall) {
-        console.log("Ending call (JaaS):", this.activeCall.callData);
+        console.log("Ending call (Daily.co):", this.activeCall.callData);
 
-        // Use JaaS calling service
-        await jaasCallingService.endCall();
+        // Use Daily calling service
+        await dailyCallingService.endCall();
 
         // Emit socket events for cleanup
         const socket = await this.ensureSocket();
@@ -1815,10 +1815,10 @@ class CallingService {
 
   // Clean up call resources
   private cleanupCall() {
-    console.log("=== CALLING SERVICE: cleanupCall (JaaS) ===");
+    console.log("=== CALLING SERVICE: cleanupCall (Daily.co) ===");
 
-    // Clean up JaaS calling service
-    jaasCallingService.cleanup();
+    // Clean up Daily calling service
+    dailyCallingService.cleanup();
 
     // Stop all media streams
     if (this.localStream) {

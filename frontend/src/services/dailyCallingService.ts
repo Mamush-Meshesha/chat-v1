@@ -1,7 +1,8 @@
+import DailyIframe from '@daily-co/daily-js';
 import axios from "axios";
 import { getApiUrl } from "../config/config";
 
-export interface JaaSCallData {
+export interface DailyCallData {
   callId: string;
   callerId: string;
   receiverId: string;
@@ -9,20 +10,21 @@ export interface JaaSCallData {
   callerName: string;
   callerAvatar?: string;
   status: "ringing" | "active" | "ended";
-  roomName: string;
-  jwt?: string;
+  roomUrl?: string;
+  token?: string;
 }
 
-class JaaSCallingService {
-  private activeCall: JaaSCallData | null = null;
-  private jitsiApi: any = null;
+class DailyCallingService {
+  private activeCall: DailyCallData | null = null;
+  private dailyIframe: any = null;
+  private callStartTime: number | null = null;
 
   constructor() {
-    console.log("🚀 JaaS Calling Service initialized");
+    console.log("🚀 Daily Calling Service initialized");
   }
 
-  // Generate JWT token for JaaS
-  private async generateJWT(roomName: string): Promise<string | null> {
+  // Generate Daily.co room URL and token
+  private async generateDailyRoom(roomName: string): Promise<{ roomUrl: string; token?: string } | null> {
     try {
       const authUser = localStorage.getItem("authUser");
       const token = authUser ? JSON.parse(authUser).token : null;
@@ -32,24 +34,13 @@ class JaaSCallingService {
         return null;
       }
 
-      const response = await axios.post(
-        getApiUrl("/api/jaas/generate-jwt"),
-        { roomName },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        return response.data.token;
-      } else {
-        console.error("Failed to generate JWT:", response.data.message);
-        return null;
-      }
+      // For now, we'll create a simple room URL
+      // In production, you might want to call your backend to create a room
+      const roomUrl = `https://your-domain.daily.co/${roomName}`;
+      
+      return { roomUrl };
     } catch (error) {
-      console.error("Error generating JWT:", error);
+      console.error("Error generating Daily room:", error);
       return null;
     }
   }
@@ -158,23 +149,20 @@ class JaaSCallingService {
 
   // Initiate a call
   async initiateCall(
-    callData: Omit<JaaSCallData, "callId" | "status" | "roomName" | "jwt">
+    callData: Omit<DailyCallData, "callId" | "status" | "roomUrl" | "token">
   ): Promise<boolean> {
     try {
-      console.log("=== JaaS CALLING SERVICE: initiateCall ===");
+      console.log("=== DAILY CALLING SERVICE: initiateCall ===");
       console.log("Call data received:", callData);
 
       // Generate unique room name
-      const roomName = this.generateRoomName(
-        callData.callerId,
-        callData.receiverId
-      );
+      const roomName = this.generateRoomName(callData.callerId, callData.receiverId);
       console.log("Generated room name:", roomName);
 
-      // Generate JWT token
-      const jwt = await this.generateJWT(roomName);
-      if (!jwt) {
-        console.error("Failed to generate JWT token");
+      // Generate Daily room URL
+      const roomData = await this.generateDailyRoom(roomName);
+      if (!roomData) {
+        console.error("Failed to generate Daily room");
         return false;
       }
 
@@ -185,20 +173,18 @@ class JaaSCallingService {
         callType: callData.callType,
       });
 
-      const callId =
-        callRecordId ||
-        `${callData.callerId}-${callData.receiverId}-${Date.now()}`;
+      const callId = callRecordId || `${callData.callerId}-${callData.receiverId}-${Date.now()}`;
 
       // Set active call
       this.activeCall = {
         ...callData,
         callId,
         status: "ringing",
-        roomName,
-        jwt,
+        roomUrl: roomData.roomUrl,
+        token: roomData.token,
       };
 
-      console.log("✅ JaaS call initiated successfully");
+      console.log("✅ Daily call initiated successfully");
       return true;
     } catch (error) {
       console.error("❌ Error in initiateCall:", error);
@@ -207,26 +193,18 @@ class JaaSCallingService {
   }
 
   // Accept a call
-  async acceptCall(callData: JaaSCallData): Promise<boolean> {
+  async acceptCall(callData: DailyCallData): Promise<boolean> {
     try {
-      console.log("=== JaaS CALLING SERVICE: acceptCall ===");
+      console.log("=== DAILY CALLING SERVICE: acceptCall ===");
       console.log("Call data received:", callData);
 
-      // Generate JWT token for the same room
-      const jwt = await this.generateJWT(callData.roomName);
-      if (!jwt) {
-        console.error("Failed to generate JWT token");
-        return false;
-      }
-
-      // Update call data with JWT
+      // Update call data
       this.activeCall = {
         ...callData,
-        jwt,
         status: "active",
       };
 
-      console.log("✅ JaaS call accepted successfully");
+      console.log("✅ Daily call accepted successfully");
       return true;
     } catch (error) {
       console.error("❌ Error in acceptCall:", error);
@@ -238,17 +216,26 @@ class JaaSCallingService {
   async endCall(): Promise<void> {
     try {
       if (this.activeCall) {
-        console.log("Ending JaaS call:", this.activeCall.callId);
+        console.log("Ending Daily call:", this.activeCall.callId);
+
+        // Clean up Daily iframe
+        if (this.dailyIframe) {
+          this.dailyIframe.destroy();
+          this.dailyIframe = null;
+        }
 
         // Update call record in backend
         if (this.activeCall.callId) {
-          await this.updateCallRecord(this.activeCall.callId, "completed");
-        }
+          let duration: number | undefined;
+          if (this.activeCall.status === "active" && this.callStartTime) {
+            duration = Math.floor((Date.now() - this.callStartTime) / 1000);
+          }
 
-        // Clean up Jitsi API
-        if (this.jitsiApi) {
-          this.jitsiApi.dispose();
-          this.jitsiApi = null;
+          await this.updateCallRecord(
+            this.activeCall.callId,
+            "completed",
+            duration
+          );
         }
       }
     } catch (error) {
@@ -259,9 +246,9 @@ class JaaSCallingService {
   }
 
   // Decline a call
-  async declineCall(callData: JaaSCallData): Promise<void> {
+  async declineCall(callData: DailyCallData): Promise<void> {
     try {
-      console.log("Declining JaaS call:", callData.callId);
+      console.log("Declining Daily call:", callData.callId);
 
       // Update call record in backend
       if (callData.callId) {
@@ -274,24 +261,89 @@ class JaaSCallingService {
     this.cleanupCall();
   }
 
+  // Start Daily call
+  async startCall(containerId: string): Promise<boolean> {
+    try {
+      if (!this.activeCall || !this.activeCall.roomUrl) {
+        console.error("No active call or room URL");
+        return false;
+      }
+
+      console.log("Starting Daily call in container:", containerId);
+
+      // Create Daily iframe
+      const container = document.getElementById(containerId);
+      if (!container) {
+        console.error("Container element not found:", containerId);
+        return false;
+      }
+
+      this.dailyIframe = DailyIframe.createFrame(container, {
+        showLeaveButton: true,
+        showFullscreenButton: true,
+        showLocalVideo: true,
+        showParticipantsBar: true,
+        iframeStyle: {
+          width: '100%',
+          height: '100%',
+          border: 'none',
+        },
+      });
+
+      // Set up event listeners
+      this.dailyIframe
+        .on('loaded', () => {
+          console.log('Daily iframe loaded');
+        })
+        .on('joined-meeting', () => {
+          console.log('Joined Daily meeting');
+          this.callStartTime = Date.now();
+          this.activeCall!.status = "active";
+          this.onCallConnected?.(this.activeCall);
+        })
+        .on('left-meeting', () => {
+          console.log('Left Daily meeting');
+          this.endCall();
+        })
+        .on('error', (error: any) => {
+          console.error('Daily iframe error:', error);
+          this.onCallFailed?.(error);
+        });
+
+      // Join the meeting
+      await this.dailyIframe.join({
+        url: this.activeCall.roomUrl,
+        token: this.activeCall.token,
+        userName: this.activeCall.callerName,
+        userAvatar: this.activeCall.callerAvatar,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error starting Daily call:", error);
+      return false;
+    }
+  }
+
   // Clean up call resources
   private cleanupCall() {
-    console.log("=== JaaS CALLING SERVICE: cleanupCall ===");
+    console.log("=== DAILY CALLING SERVICE: cleanupCall ===");
 
-    // Clean up Jitsi API
-    if (this.jitsiApi) {
-      this.jitsiApi.dispose();
-      this.jitsiApi = null;
+    // Clean up Daily iframe
+    if (this.dailyIframe) {
+      this.dailyIframe.destroy();
+      this.dailyIframe = null;
     }
 
     // Reset call state
     this.activeCall = null;
+    this.callStartTime = null;
 
-    console.log("✅ JaaS call resources cleaned up");
+    console.log("✅ Daily call resources cleaned up");
   }
 
   // Get current call state
-  getCurrentCall(): JaaSCallData | null {
+  getCurrentCall(): DailyCallData | null {
     return this.activeCall;
   }
 
@@ -306,4 +358,4 @@ class JaaSCallingService {
   }
 }
 
-export default new JaaSCallingService();
+export default new DailyCallingService();

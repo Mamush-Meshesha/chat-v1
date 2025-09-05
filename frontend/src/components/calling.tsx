@@ -4,7 +4,7 @@ import { RootState } from "../store";
 import axios from "axios";
 import { MdOutlineCall, MdOutlineCallEnd } from "react-icons/md";
 import { FiSearch, FiFilter } from "react-icons/fi";
-import JitsiCallDialog from "./ui/jitsiCallDialog";
+import DailyCallDialog from "./ui/dailyCallDialog";
 import callingService from "../services/callingService";
 
 interface CallRecord {
@@ -40,8 +40,8 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
     callerName: string;
     callerAvatar?: string;
     status: "ringing" | "active" | "ended";
-    roomName: string;
-    jwt?: string;
+    roomUrl?: string;
+    token?: string;
   } | null>(null);
   const [isIncomingCall, setIsIncomingCall] = useState(false);
 
@@ -333,15 +333,15 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
         // Get the call data from the service
         const activeCall = callingService.getCurrentCall();
         if (activeCall) {
-          // Ensure roomName is present for Jitsi
-          const callData = {
-            ...activeCall.callData,
-            roomName:
-              activeCall.callData.roomName ||
-              `call-${activeCall.callData.callerId}-${
-                activeCall.callData.receiverId
-              }-${Date.now()}`,
-          };
+                      // Ensure roomUrl is present for Daily.co
+            const callData = {
+              ...activeCall.callData,
+              roomUrl:
+                activeCall.callData.roomUrl ||
+                `https://your-domain.daily.co/call-${activeCall.callData.callerId}-${
+                  activeCall.callData.receiverId
+                }-${Date.now()}`,
+            };
           setCurrentCall(callData);
           setIsIncomingCall(false);
           setIsCallDialogOpen(true);
@@ -539,8 +539,8 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
         </div>
       </div>
 
-      {/* Jitsi Call Dialog */}
-      <JitsiCallDialog
+      {/* Daily.co Call Dialog */}
+      <DailyCallDialog
         isOpen={isCallDialogOpen}
         onClose={handleCloseCallDialog}
         callData={currentCall}
