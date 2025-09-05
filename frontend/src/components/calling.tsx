@@ -4,6 +4,8 @@ import { RootState } from "../store";
 import axios from "axios";
 import { MdOutlineCall, MdOutlineCallEnd } from "react-icons/md";
 import { FiSearch, FiFilter } from "react-icons/fi";
+import JitsiCallDialog from "./ui/jitsiCallDialog";
+import callingService from "../services/callingService";
 
 interface CallRecord {
   id: string;
@@ -27,6 +29,21 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
   const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Call dialog state
+  const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
+  const [currentCall, setCurrentCall] = useState<{
+    callId: string;
+    callerId: string;
+    receiverId: string;
+    callType: "audio" | "video";
+    callerName: string;
+    callerAvatar?: string;
+    status: "ringing" | "active" | "ended";
+    roomName: string;
+    jwt?: string;
+  } | null>(null);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
 
   const authUser = useSelector((state: RootState) => state.auth.user);
   const isAuthenticated = useSelector(
@@ -291,16 +308,74 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const handleCallBack = (call: CallRecord) => {
+  const handleCallBack = async (call: CallRecord) => {
     console.log("Calling back:", call.name);
-    // Here you would integrate with your calling service
-    // You can use the callingService.initiateCall() method
-    if (call.userId) {
-      // Initiate call to the user
-      console.log(
-        `Initiating ${call.callType} call to ${call.name} (ID: ${call.userId})`
-      );
+
+    if (!call.userId || !authUser) {
+      console.error("Missing user ID or auth user");
+      return;
     }
+
+    try {
+      // Prepare call data
+      const callData = {
+        callerId: authUser._id,
+        receiverId: call.userId,
+        callType: call.callType,
+        callerName: authUser.name || (authUser as any).username,
+        callerAvatar: (authUser as any).avatar,
+      };
+
+      // Initiate call using calling service
+      const success = await callingService.initiateCall(callData);
+
+      if (success) {
+        // Get the call data from the service
+        const activeCall = callingService.getCurrentCall();
+        if (activeCall) {
+          // Ensure roomName is present for Jitsi
+          const callData = {
+            ...activeCall.callData,
+            roomName:
+              activeCall.callData.roomName ||
+              `call-${activeCall.callData.callerId}-${
+                activeCall.callData.receiverId
+              }-${Date.now()}`,
+          };
+          setCurrentCall(callData);
+          setIsIncomingCall(false);
+          setIsCallDialogOpen(true);
+        }
+      } else {
+        console.error("Failed to initiate call");
+      }
+    } catch (error) {
+      console.error("Error initiating call:", error);
+    }
+  };
+
+  const handleAcceptCall = () => {
+    console.log("Call accepted");
+    // The Jitsi dialog will handle the actual call acceptance
+  };
+
+  const handleDeclineCall = () => {
+    console.log("Call declined");
+    setIsCallDialogOpen(false);
+    setCurrentCall(null);
+  };
+
+  const handleEndCall = () => {
+    console.log("Call ended");
+    setIsCallDialogOpen(false);
+    setCurrentCall(null);
+    // Refresh call history
+    fetchCallHistory();
+  };
+
+  const handleCloseCallDialog = () => {
+    setIsCallDialogOpen(false);
+    setCurrentCall(null);
   };
 
   return (
@@ -463,6 +538,17 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
           </div>
         </div>
       </div>
+
+      {/* Jitsi Call Dialog */}
+      <JitsiCallDialog
+        isOpen={isCallDialogOpen}
+        onClose={handleCloseCallDialog}
+        callData={currentCall}
+        isIncoming={isIncomingCall}
+        onAccept={handleAcceptCall}
+        onDecline={handleDeclineCall}
+        onEnd={handleEndCall}
+      />
     </div>
   );
 };

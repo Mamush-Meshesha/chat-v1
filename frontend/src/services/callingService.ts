@@ -1,7 +1,8 @@
 import { Socket } from "socket.io-client";
 import socketManager from "./socketManager";
-import axios from "axios";
-import { getApiUrl } from "../config/config";
+// import axios from "axios";
+// import { getApiUrl } from "../config/config";
+import jaasCallingService from "./jaasCallingService";
 
 export interface CallData {
   callId: string;
@@ -11,6 +12,8 @@ export interface CallData {
   callerName: string;
   callerAvatar?: string;
   status: "ringing" | "active" | "ended";
+  roomName?: string;
+  jwt?: string;
 }
 
 export interface WebRTCCall {
@@ -32,9 +35,9 @@ class CallingService {
   private callingSound: HTMLAudioElement | null = null;
   private ringingSound: HTMLAudioElement | null = null;
   private currentPlayingSound: HTMLAudioElement | null = null;
-  private pendingOffer: any = null; // Queue for offers received before peer connection is ready
-  private pendingAnswer: any = null;
-  private sentIceCandidates: Set<string> = new Set(); // Track sent ICE candidates to prevent duplicates
+  // private pendingOffer: unknown = null;
+  // private pendingAnswer: unknown = null;
+  private sentIceCandidates: Set<string> = new Set();
   private trackMonitorInterval: number | null = null;
   private eventCounts = { callAccepted: 0, callConnected: 0 };
   private screenShareStream: MediaStream | null = null;
@@ -57,82 +60,82 @@ class CallingService {
   }
 
   // Create a call record in the backend
-  private async createCallRecord(callData: {
-    receiverId: string;
-    type: "outgoing" | "incoming";
-    callType: "audio" | "video";
-  }): Promise<string | null> {
-    try {
-      // Get token from localStorage
-      const authUser = localStorage.getItem("authUser");
-      const token = authUser ? JSON.parse(authUser).token : null;
+  // private async createCallRecord(callData: {
+  //   receiverId: string;
+  //   type: "outgoing" | "incoming";
+  //   callType: "audio" | "video";
+  // }): Promise<string | null> {
+  //   try {
+  //     // Get token from localStorage
+  //     const authUser = localStorage.getItem("authUser");
+  //     const token = authUser ? JSON.parse(authUser).token : null;
 
-      if (!token) {
-        console.error("No authentication token found for call creation");
-        return null;
-      }
+  //     if (!token) {
+  //       console.error("No authentication token found for call creation");
+  //       return null;
+  //     }
 
-      const response = await axios.post(
-        getApiUrl("/api/calls"),
-        {
-          receiverId: callData.receiverId,
-          type: callData.type,
-          callType: callData.callType,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  //     const response = await axios.post(
+  //       getApiUrl("/api/calls"),
+  //       {
+  //         receiverId: callData.receiverId,
+  //         type: callData.type,
+  //         callType: callData.callType,
+  //       },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
 
-      if (response.data.success || response.data._id) {
-        console.log("Call record created:", response.data);
-        return response.data._id || response.data.call?._id;
-      } else {
-        console.error("Failed to create call record:", response.data);
-        return null;
-      }
-    } catch (error) {
-      console.error("Error creating call record:", error);
-      return null;
-    }
-  }
+  //     if (response.data.success || response.data._id) {
+  //       console.log("Call record created:", response.data);
+  //       return response.data._id || response.data.call?._id;
+  //     } else {
+  //       console.error("Failed to create call record:", response.data);
+  //       return null;
+  //     }
+  //   } catch (error) {
+  //     console.error("Error creating call record:", error);
+  //     return null;
+  //   }
+  // }
 
   // Update call record status
-  private async updateCallRecord(
-    callId: string,
-    status: "completed" | "missed" | "rejected",
-    duration?: number
-  ): Promise<void> {
-    try {
-      // Get token from localStorage
-      const authUser = localStorage.getItem("authUser");
-      const token = authUser ? JSON.parse(authUser).token : null;
+  // private async updateCallRecord(
+  //   callId: string,
+  //   status: "completed" | "missed" | "rejected",
+  //   duration?: number
+  // ): Promise<void> {
+  //   try {
+  //     // Get token from localStorage
+  //     const authUser = localStorage.getItem("authUser");
+  //     const token = authUser ? JSON.parse(authUser).token : null;
 
-      if (!token) {
-        console.error("No authentication token found for call update");
-        return;
-      }
+  //     if (!token) {
+  //       console.error("No authentication token found for call update");
+  //       return;
+  //     }
 
-      await axios.put(
-        getApiUrl(`/api/calls/${callId}`),
-        {
-          status,
-          duration,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  //     await axios.put(
+  //       getApiUrl(`/api/calls/${callId}`),
+  //       {
+  //         status,
+  //         duration,
+  //       },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
 
-      console.log("Call record updated:", { callId, status, duration });
-    } catch (error) {
-      console.error("Error updating call record:", error);
-    }
-  }
+  //     console.log("Call record updated:", { callId, status, duration });
+  //   } catch (error) {
+  //     console.error("Error updating call record:", error);
+  //   }
+  // }
 
   private initializeRingtone() {
     console.log("🔊 initializeRingtone called");
@@ -496,7 +499,7 @@ class CallingService {
       // If peer connection is not ready, queue the offer
       if (!this.peerConnection) {
         console.log("⏳ Peer connection not ready, queuing offer...");
-        this.pendingOffer = data;
+        // this.pendingOffer = data;
         console.log(
           "⏳ Offer queued, will process when peer connection is ready"
         );
@@ -525,7 +528,7 @@ class CallingService {
         this.peerConnection.signalingState !== "have-local-offer"
       ) {
         console.log("⏳ Not ready for answer, queuing it...");
-        this.pendingAnswer = data;
+        // this.pendingAnswer = data;
         return;
       }
 
@@ -619,113 +622,65 @@ class CallingService {
   }
 
   // Callback functions that components can set
-  onCallConnected?: (data: any) => void;
-  onCallEnded?: (data: any) => void;
-  onCallFailed?: (data: any) => void;
+  onCallConnected?: (data: unknown) => void;
+  onCallEnded?: (data: unknown) => void;
+  onCallFailed?: (data: unknown) => void;
   onRemoteStream?: (stream: MediaStream) => void;
 
   async initiateCall(
     callData: Omit<CallData, "callId" | "status">
   ): Promise<boolean> {
-    console.log("=== CALLING SERVICE: initiateCall ===");
+    console.log("=== CALLING SERVICE: initiateCall (JaaS) ===");
     console.log("Call data received:", callData);
 
     try {
-      // Ensure we have a valid socket connection
-      await this.ensureSocket();
-      console.log("✅ Socket available, proceeding with media access...");
-
-      // Get user media
-      const constraints = {
-        audio: true,
-        video: callData.callType === "video",
-      };
-
-      console.log("Requesting media with constraints:", constraints);
-      this.localStream = await this.requestMedia(constraints);
-      console.log("✅ Media stream obtained:", this.localStream);
-
-      // Create peer connection for caller
-      console.log("🔄 Creating peer connection for caller...");
-      this.peerConnection = this.createPeerConnection();
-      console.log("✅ Peer connection created");
-
-      // Add local stream tracks to peer connection
-      console.log("🎵 Adding local tracks to peer connection:");
-      this.localStream.getTracks().forEach((track, index) => {
-        console.log(`🎵 Adding track ${index}:`, {
-          kind: track.kind,
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState,
-          id: track.id,
-          label: track.label,
-        });
-        this.peerConnection!.addTrack(track, this.localStream!);
-      });
-
-      // Create call record in backend
-      console.log("Creating call record in backend...");
-      const callRecordId = await this.createCallRecord({
+      // Use JaaS calling service instead of WebRTC
+      const success = await jaasCallingService.initiateCall({
+        callerId: callData.callerId,
         receiverId: callData.receiverId,
-        type: "outgoing",
         callType: callData.callType,
+        callerName: callData.callerName,
+        callerAvatar: callData.callerAvatar,
       });
-      console.log("✅ Call record created:", callRecordId);
 
-      // Set active call
-      const callId =
-        callRecordId ||
-        `${callData.callerId}-${callData.receiverId}-${Date.now()}`;
+      if (success) {
+        // Get the JaaS call data
+        const jaasCall = jaasCallingService.getCurrentCall();
+        if (jaasCall) {
+          // Convert JaaS call data to our format
+          this.activeCall = {
+            localStream: null,
+            remoteStream: null,
+            peerConnection: null,
+            callData: {
+              callId: jaasCall.callId,
+              callerId: jaasCall.callerId,
+              receiverId: jaasCall.receiverId,
+              callType: jaasCall.callType,
+              callerName: jaasCall.callerName,
+              callerAvatar: jaasCall.callerAvatar,
+              status: jaasCall.status,
+            },
+          };
 
-      this.activeCall = {
-        localStream: this.localStream,
-        remoteStream: this.remoteStream,
-        peerConnection: this.peerConnection,
-        callData: {
-          ...callData,
-          callId,
-          status: "ringing",
-        },
-      };
+          // Emit initiateCall event to socket server
+          if (this.socket) {
+            this.socket.emit("initiateCall", {
+              callerId: callData.callerId,
+              receiverId: callData.receiverId,
+              callType: callData.callType,
+              callId: jaasCall.callId,
+              roomName: jaasCall.roomName,
+            });
+          }
 
-      console.log("✅ Active call set:", this.activeCall);
-
-      // Save call data to localStorage for recovery
-      try {
-        localStorage.setItem(
-          "lastInitiatedCall",
-          JSON.stringify({
-            ...callData,
-            callId,
-            status: "ringing",
-          })
-        );
-        console.log("✅ Call data saved to localStorage for recovery");
-      } catch (error) {
-        console.warn("⚠️ Could not save call data to localStorage:", error);
+          console.log("✅ JaaS call initiated successfully");
+          return true;
+        }
       }
 
-      // Emit initiateCall event to socket server
-      console.log("Emitting initiateCall to socket server...");
-      if (this.socket) {
-        this.socket.emit("initiateCall", {
-          callerId: callData.callerId,
-          receiverId: callData.receiverId,
-          callType: callData.callType,
-          callId: callId,
-        });
-      }
-
-      console.log("✅ initiateCall event emitted to socket server");
-
-      // Start call ringtone for outgoing calls
-      this.startCallRingtone();
-
-      // Note: WebRTC offer will be sent after the receiver accepts the call
-      console.log("🔄 Call initiated, waiting for receiver to accept...");
-
-      return true;
+      console.error("❌ Failed to initiate JaaS call");
+      return false;
     } catch (error) {
       console.error("❌ Error in initiateCall:", error);
       this.cleanupCall();
@@ -735,284 +690,52 @@ class CallingService {
 
   async acceptCall(callData: CallData): Promise<boolean> {
     try {
-      console.log("🔄 CALLING SERVICE: acceptCall called");
+      console.log("🔄 CALLING SERVICE: acceptCall (JaaS) called");
       console.log("🔄 Call data received:", callData);
-      console.log("🔄 Current user ID:", this.getCurrentUserId());
-      console.log("🔄 Current socket ID:", this.socket?.id);
 
-      // Ensure we have a valid socket connection
-      await this.ensureSocket();
-
-      // Get user media with specific constraints for localhost testing
-      const constraints = {
-        audio: {
-          echoCancellation: false, // Disable echo cancellation for localhost testing
-          noiseSuppression: false, // Disable noise suppression
-          autoGainControl: false, // Disable auto gain control
-        },
-        video:
-          callData.callType === "video"
-            ? {
-                width: { ideal: 1280, min: 640 },
-                height: { ideal: 720, min: 480 },
-                frameRate: { ideal: 30, min: 15 },
-              }
-            : false,
-      };
-
-      console.log("🔄 Requesting media with constraints:", constraints);
-      console.log("🔄 Call type for media request:", callData.callType);
-      console.log("🔄 Will request video:", callData.callType === "video");
-      console.log("🔄 User role in call:", {
-        currentUserId: this.getCurrentUserId(),
+      // Convert CallData to JaaSCallData format
+      const jaasCallData = {
+        callId: callData.callId,
         callerId: callData.callerId,
         receiverId: callData.receiverId,
-        isReceiver: callData.receiverId === this.getCurrentUserId(),
-        isCaller: callData.callerId === this.getCurrentUserId(),
-      });
-
-      try {
-        this.localStream = await navigator.mediaDevices.getUserMedia(
-          constraints
-        );
-        console.log("✅ Media stream obtained:", this.localStream);
-        console.log(
-          "🎵 Audio tracks:",
-          this.localStream.getAudioTracks().map((t) => ({
-            kind: t.kind,
-            enabled: t.enabled,
-            muted: t.muted,
-            readyState: t.readyState,
-          }))
-        );
-
-        if (callData.callType === "video") {
-          console.log(
-            "📹 Video tracks:",
-            this.localStream.getVideoTracks().map((t) => ({
-              kind: t.kind,
-              enabled: t.enabled,
-              muted: t.muted,
-              readyState: t.readyState,
-              width: t.getSettings().width,
-              height: t.getSettings().height,
-              frameRate: t.getSettings().frameRate,
-            }))
-          );
-        }
-      } catch (videoError: any) {
-        console.error("❌ Video access failed:", videoError);
-        console.error("❌ Video error name:", videoError.name);
-        console.error("❌ Video error message:", videoError.message);
-        console.error("❌ Video error details:", {
-          name: videoError.name,
-          message: videoError.message,
-          stack: videoError.stack,
-        });
-
-        // Check if it's a camera conflict error
-        if (
-          videoError.name === "NotAllowedError" ||
-          videoError.name === "PermissionDeniedError" ||
-          videoError.message.includes("Permission denied") ||
-          videoError.message.includes("camera") ||
-          videoError.message.includes("already in use")
-        ) {
-          console.log("🚨 CAMERA CONFLICT DETECTED!");
-          console.log("🚨 This often happens when testing on same computer");
-          console.log(
-            "🚨 Try: different browsers, incognito mode, or different devices"
-          );
-
-          // Wait a bit and retry with audio-only
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-
-        if (callData.callType === "video") {
-          console.log("🚨 CRITICAL: Video access failed on video call!");
-          console.log("🚨 User role:", this.getCurrentUserId());
-          console.log("🚨 Call data:", callData);
-
-          // Try to get just audio first
-          try {
-            const audioConstraints = {
-              audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
-              },
-              video: false,
-            };
-
-            this.localStream = await navigator.mediaDevices.getUserMedia(
-              audioConstraints
-            );
-            console.log("✅ Audio-only stream obtained as fallback");
-            console.log(
-              "✅ Audio tracks:",
-              this.localStream.getAudioTracks().length
-            );
-
-            // Now try to add video separately with more permissive constraints
-            try {
-              console.log(
-                "🔄 Attempting to add video with relaxed constraints..."
-              );
-              const relaxedVideoConstraints = {
-                video: {
-                  width: { ideal: 640, min: 320 },
-                  height: { ideal: 480, min: 240 },
-                  frameRate: { ideal: 15, min: 10 },
-                },
-              };
-
-              const videoOnlyStream = await navigator.mediaDevices.getUserMedia(
-                relaxedVideoConstraints
-              );
-              const videoTracks = videoOnlyStream.getVideoTracks();
-
-              if (videoTracks.length > 0) {
-                console.log("✅ Video track obtained separately!");
-                videoTracks.forEach((track) => {
-                  if (this.localStream) {
-                    this.localStream.addTrack(track);
-                    console.log(
-                      "✅ Video track added to existing audio stream"
-                    );
-                  }
-                });
-              }
-            } catch (separateVideoError: any) {
-              console.log(
-                "⚠️ Separate video access also failed:",
-                separateVideoError.message
-              );
-              console.log("🔄 Continuing with audio-only...");
-            }
-          } catch (audioError) {
-            console.error("❌ Both video and audio access failed:", audioError);
-            throw new Error("Cannot access microphone or camera");
-          }
-        } else {
-          // Re-throw the original error for audio calls
-          throw videoError;
-        }
-      }
-
-      // Create peer connection
-      this.peerConnection = this.createPeerConnection();
-
-      // Add local stream tracks to peer connection
-      console.log("🎵 Adding tracks to peer connection:");
-      console.log(
-        "🎵 Total tracks in local stream:",
-        this.localStream.getTracks().length
-      );
-      console.log("🎵 Audio tracks:", this.localStream.getAudioTracks().length);
-      console.log("🎵 Video tracks:", this.localStream.getVideoTracks().length);
-
-      this.localStream.getTracks().forEach((track, index) => {
-        if (this.localStream && this.peerConnection) {
-          console.log(`🎵 Adding track ${index}:`, {
-            kind: track.kind,
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState,
-            id: track.id,
-            label: track.label,
-          });
-
-          // Add event listeners to track lifecycle events
-          track.addEventListener("ended", () => {
-            console.log(
-              `🚨 TRACK ENDED: ${track.kind} track ${track.id} ended!`
-            );
-            console.log("🚨 Track state:", {
-              kind: track.kind,
-              enabled: track.enabled,
-              muted: track.muted,
-              readyState: track.readyState,
-            });
-          });
-
-          track.addEventListener("mute", () => {
-            console.log(
-              `🔇 TRACK MUTED: ${track.kind} track ${track.id} muted!`
-            );
-          });
-
-          track.addEventListener("unmute", () => {
-            console.log(
-              `🔊 TRACK UNMUTED: ${track.kind} track ${track.id} unmuted!`
-            );
-          });
-
-          // Monitor track removal from stream
-          const originalRemoveTrack = this.localStream.removeTrack.bind(
-            this.localStream
-          );
-          this.localStream.removeTrack = (trackToRemove) => {
-            console.log(
-              `🚨 TRACK REMOVED FROM STREAM: ${trackToRemove.kind} track ${trackToRemove.id}`
-            );
-            console.log("🚨 Removal stack trace:", new Error().stack);
-            return originalRemoveTrack(trackToRemove);
-          };
-
-          this.peerConnection.addTrack(track, this.localStream);
-        }
-      });
-
-      // Debug caller's local video setup
-      if (callData.callerId === this.getCurrentUserId()) {
-        console.log("🎯 CALLER DEBUG: Setting up local video display");
-        console.log("🎯 Local stream has tracks:", {
-          total: this.localStream.getTracks().length,
-          audio: this.localStream.getAudioTracks().length,
-          video: this.localStream.getVideoTracks().length,
-        });
-
-        if (this.localStream.getVideoTracks().length > 0) {
-          const videoTrack = this.localStream.getVideoTracks()[0];
-          console.log("🎯 Video track details:", {
-            id: videoTrack.id,
-            enabled: videoTrack.enabled,
-            readyState: videoTrack.readyState,
-            muted: videoTrack.muted,
-          });
-        }
-      }
-
-      // Set active call
-      this.activeCall = {
-        localStream: this.localStream,
-        remoteStream: this.remoteStream,
-        peerConnection: this.peerConnection,
-        callData,
+        callType: callData.callType,
+        callerName: callData.callerName,
+        callerAvatar: callData.callerAvatar,
+        status: callData.status,
+        roomName:
+          (callData as { roomName?: string }).roomName ||
+          `call-${callData.callerId}-${callData.receiverId}-${Date.now()}`,
       };
 
-      console.log("✅ Call accepted successfully in calling service");
-      console.log("✅ Local stream:", !!this.localStream);
-      console.log("✅ Peer connection:", !!this.activeCall);
-      console.log("✅ Active call set:", !!this.activeCall);
+      // Use JaaS calling service
+      const success = await jaasCallingService.acceptCall(jaasCallData);
 
-      // If we're the caller, create and send the offer
-      if (callData.callerId !== this.getCurrentUserId()) {
-        console.log("🔄 We're the receiver, waiting for offer from caller...");
+      if (success) {
+        // Update our active call with JaaS data
+        const jaasCall = jaasCallingService.getCurrentCall();
+        if (jaasCall) {
+          this.activeCall = {
+            localStream: null,
+            remoteStream: null,
+            peerConnection: null,
+            callData: {
+              callId: jaasCall.callId,
+              callerId: jaasCall.callerId,
+              receiverId: jaasCall.receiverId,
+              callType: jaasCall.callType,
+              callerName: jaasCall.callerName,
+              callerAvatar: jaasCall.callerAvatar,
+              status: jaasCall.status,
+            },
+          };
 
-        // Check if we have a pending offer to process
-        if (this.pendingOffer) {
-          console.log(
-            "🔄 Processing pending offer after peer connection created..."
-          );
-          await this.processPendingOffer();
+          console.log("✅ JaaS call accepted successfully");
+          return true;
         }
-      } else {
-        console.log("🔄 We're the caller, creating and sending offer...");
-        await this.createAndSendOffer();
       }
 
-      return true;
+      console.error("❌ Failed to accept JaaS call");
+      return false;
     } catch (error) {
       console.error("Failed to accept call:", error);
       this.cleanupCall();
@@ -1022,17 +745,33 @@ class CallingService {
 
   async declineCall(callData: CallData) {
     try {
+      console.log("🔄 Declining call (JaaS):", callData);
+
+      // Convert CallData to JaaSCallData format
+      const jaasCallData = {
+        callId: callData.callId,
+        callerId: callData.callerId,
+        receiverId: callData.receiverId,
+        callType: callData.callType,
+        callerName: callData.callerName,
+        callerAvatar: callData.callerAvatar,
+        status: callData.status,
+        roomName:
+          (callData as { roomName?: string }).roomName ||
+          `call-${callData.callerId}-${callData.receiverId}-${Date.now()}`,
+      };
+
+      // Use JaaS calling service
+      await jaasCallingService.declineCall(jaasCallData);
+
+      // Emit socket events for cleanup
       const socket = await this.ensureSocket();
-
-      console.log("🔄 Declining call:", callData);
-
       socket.emit("cancelCall", {
         callerId: callData.callerId,
         receiverId: callData.receiverId,
         callType: callData.callType,
       });
 
-      // Also emit endCall to ensure cleanup
       socket.emit("endCall", {
         callerId: callData.callerId,
         receiverId: callData.receiverId,
@@ -1048,42 +787,18 @@ class CallingService {
   async endCall() {
     try {
       if (this.activeCall) {
+        console.log("Ending call (JaaS):", this.activeCall.callData);
+
+        // Use JaaS calling service
+        await jaasCallingService.endCall();
+
+        // Emit socket events for cleanup
         const socket = await this.ensureSocket();
-
-        // Determine the other user ID correctly
-        const currentUserId = this.activeCall.callData.callerId;
-        const otherUserId = this.activeCall.callData.receiverId;
-
-        console.log("Ending call:", {
-          currentUserId,
-          otherUserId,
-          callType: this.activeCall.callData.callType,
-        });
-
         socket.emit("endCall", {
-          callerId: currentUserId,
-          receiverId: otherUserId,
+          callerId: this.activeCall.callData.callerId,
+          receiverId: this.activeCall.callData.receiverId,
           callType: this.activeCall.callData.callType,
         });
-
-        // Update call record in backend
-        if (this.activeCall.callData.callId) {
-          // Calculate actual call duration if call was active
-          let duration: number | undefined;
-          if (
-            this.activeCall.callData.status === "active" &&
-            this.callStartTime
-          ) {
-            duration = Math.floor((Date.now() - this.callStartTime) / 1000); // Duration in seconds
-            console.log(`✅ Call duration calculated: ${duration} seconds`);
-          }
-
-          await this.updateCallRecord(
-            this.activeCall.callData.callId,
-            "completed",
-            duration
-          );
-        }
       }
     } catch (error) {
       console.error("Error ending call:", error);
@@ -1584,7 +1299,11 @@ class CallingService {
   //   return pc;
   // }
 
-  private async handleOffer(data: any) {
+  private async handleOffer(data: {
+    offer: RTCSessionDescriptionInit;
+    senderId: string;
+    receiverId: string;
+  }) {
     try {
       console.log("🔄 handleOffer called with data:", data);
 
@@ -1640,7 +1359,11 @@ class CallingService {
     }
   }
 
-  private async handleAnswer(data: any) {
+  private async handleAnswer(data: {
+    answer: RTCSessionDescriptionInit;
+    senderId: string;
+    receiverId: string;
+  }) {
     try {
       console.log("🔄 handleAnswer called with data:", data);
 
@@ -1688,14 +1411,16 @@ class CallingService {
       // Analyze the answer SDP before setting it
       console.log("🔍 ANSWER SDP ANALYSIS:", {
         sdpType: data.answer.type,
-        hasVideo: data.answer.sdp.includes("m=video"),
-        hasAudio: data.answer.sdp.includes("m=audio"),
-        videoLines: data.answer.sdp
-          .split("\n")
-          .filter((line: string) => line.startsWith("m=video")),
-        audioLines: data.answer.sdp
-          .split("\n")
-          .filter((line: string) => line.startsWith("m=audio")),
+        hasVideo: data.answer.sdp?.includes("m=video") || false,
+        hasAudio: data.answer.sdp?.includes("m=audio") || false,
+        videoLines:
+          data.answer.sdp
+            ?.split("\n")
+            .filter((line: string) => line.startsWith("m=video")) || [],
+        audioLines:
+          data.answer.sdp
+            ?.split("\n")
+            .filter((line: string) => line.startsWith("m=audio")) || [],
         fullSdp: data.answer.sdp,
       });
 
@@ -1788,7 +1513,11 @@ class CallingService {
     return true;
   };
 
-  private async handleIceCandidate(data: any) {
+  private async handleIceCandidate(data: {
+    candidate: RTCIceCandidateInit;
+    senderId: string;
+    receiverId: string;
+  }) {
     try {
       if (!this.peerConnection) return;
 
@@ -2075,18 +1804,21 @@ class CallingService {
   }
 
   // Process pending offer if available
-  private async processPendingOffer() {
-    if (this.pendingOffer && this.peerConnection) {
-      console.log("🔄 Processing pending offer...");
-      await this.handleOffer(this.pendingOffer);
-      this.pendingOffer = null;
-      console.log("✅ Pending offer processed and cleared");
-    }
-  }
+  // private async processPendingOffer() {
+  //   if (this.pendingOffer && this.peerConnection) {
+  //     console.log("🔄 Processing pending offer...");
+  //     await this.handleOffer(this.pendingOffer as { offer: RTCSessionDescriptionInit; senderId: string; receiverId: string });
+  //     this.pendingOffer = null;
+  //     console.log("✅ Pending offer processed and cleared");
+  //   }
+  // }
 
   // Clean up call resources
   private cleanupCall() {
-    console.log("=== CALLING SERVICE: cleanupCall ===");
+    console.log("=== CALLING SERVICE: cleanupCall (JaaS) ===");
+
+    // Clean up JaaS calling service
+    jaasCallingService.cleanup();
 
     // Stop all media streams
     if (this.localStream) {
@@ -2142,8 +1874,8 @@ class CallingService {
     }
 
     // Clear pending offers and answers
-    this.pendingOffer = null;
-    this.pendingAnswer = null;
+    // this.pendingOffer = null;
+    // this.pendingAnswer = null;
     console.log("🧹 Pending offers and answers cleared");
 
     console.log("✅ Call resources cleaned up");
@@ -2457,53 +2189,53 @@ class CallingService {
       console.log("✅ Peer connection recreated successfully");
 
       // If we have a pending offer, process it now
-      if (this.pendingOffer) {
-        console.log("🔄 Processing pending offer with new connection...");
-        await this.handleOffer(this.pendingOffer);
-        this.pendingOffer = null;
-      }
+      // if (this.pendingOffer) {
+      //   console.log("🔄 Processing pending offer with new connection...");
+      //   await this.handleOffer(this.pendingOffer as { offer: RTCSessionDescriptionInit; senderId: string; receiverId: string });
+      //   this.pendingOffer = null;
+      // }
 
       // If we have a pending answer, process it now
-      if (this.pendingAnswer) {
-        console.log("🔄 Processing pending answer with new connection...");
-        await this.handleAnswer(this.pendingAnswer);
-        this.pendingAnswer = null;
-      }
-    } catch (error: any) {
+      // if (this.pendingAnswer) {
+      //   console.log("🔄 Processing pending answer with new connection...");
+      //   await this.handleAnswer(this.pendingAnswer as { answer: RTCSessionDescriptionInit; senderId: string; receiverId: string });
+      //   this.pendingAnswer = null;
+      // }
+    } catch (error: unknown) {
       console.error("❌ Error recreating peer connection:", error);
     }
   }
 
-  private async requestMedia(
-    constraints: MediaStreamConstraints
-  ): Promise<MediaStream> {
-    console.log("🔄 Requesting media with constraints:", constraints);
+  // private async requestMedia(
+  //   constraints: MediaStreamConstraints
+  // ): Promise<MediaStream> {
+  //   console.log("🔄 Requesting media with constraints:", constraints);
 
-    // Mobile-specific audio optimizations
-    if (constraints.audio && typeof constraints.audio === "object") {
-      const audioConstraints = constraints.audio as MediaTrackConstraints;
+  //   // Mobile-specific audio optimizations
+  //   if (constraints.audio && typeof constraints.audio === "object") {
+  //     const audioConstraints = constraints.audio as MediaTrackConstraints;
 
-      // Add mobile-friendly audio settings
-      audioConstraints.echoCancellation = true;
-      audioConstraints.noiseSuppression = true;
-      audioConstraints.autoGainControl = true;
-      audioConstraints.sampleRate = 48000;
-      audioConstraints.channelCount = 1; // Mono for mobile
+  //     // Add mobile-friendly audio settings
+  //     audioConstraints.echoCancellation = true;
+  //     audioConstraints.noiseSuppression = true;
+  //     audioConstraints.autoGainControl = true;
+  //     audioConstraints.sampleRate = 48000;
+  //     audioConstraints.channelCount = 1; // Mono for mobile
 
-      console.log("📱 Mobile audio constraints applied:", audioConstraints);
-    }
+  //     console.log("📱 Mobile audio constraints applied:", audioConstraints);
+  //   }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log("✅ Media stream obtained:", stream);
-      console.log("🎵 Audio tracks:", stream.getAudioTracks());
-      console.log("📹 Video tracks:", stream.getVideoTracks());
-      return stream;
-    } catch (error: any) {
-      console.error("❌ Error getting media stream:", error);
-      throw error;
-    }
-  }
+  //   try {
+  //     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  //     console.log("✅ Media stream obtained:", stream);
+  //     console.log("🎵 Audio tracks:", stream.getAudioTracks());
+  //     console.log("📹 Video tracks:", stream.getVideoTracks());
+  //     return stream;
+  //   } catch (error: unknown) {
+  //     console.error("❌ Error getting media stream:", error);
+  //     throw error;
+  //   }
+  // }
 }
 
 export default new CallingService();
