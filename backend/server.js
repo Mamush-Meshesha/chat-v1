@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import userRoute from "./routes/userRoutes.js";
 import callRoute from "./routes/callRoutes.js";
 import groupRoute from "./routes/groupRoutes.js";
+import jaasRoute from "./routes/jaasRoutes.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/users", userRoute);
 app.use("/api/calls", callRoute);
 app.use("/api/groups", groupRoute);
+app.use("/api/jaas", jaasRoute);
 
 app.use(notFound);
 app.use(errorHandler);
