@@ -325,10 +325,14 @@ const CallingHeader: FC<ChatHeaderProps> = () => {
         return `call-${sortedIds[0]}-${sortedIds[1]}-${Date.now()}`;
       };
 
-      // Generate Daily.co room URL
+      // Generate Daily.co room URL with instant room creation
       const generateDailyRoomUrl = (roomName: string): string => {
-        const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}`;
-        console.log("🔗 Generated Daily.co room URL from calling.tsx:", url);
+        // Use Daily.co's instant room creation by adding ?instant=1
+        const url = `https://cloud-48b3ae2ced424673a4d45f40a71e7be7.daily.co/${roomName}?instant=1`;
+        console.log(
+          "🔗 Generated Daily.co room URL with instant creation from calling.tsx:",
+          url
+        );
         return url;
       };
 
