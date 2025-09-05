@@ -207,6 +207,19 @@ io.on("connection", (socket) => {
           console.log("✅ callAccepted sent to caller");
         }
 
+        // Notify caller that call is now active
+        const callerSocketForConnected = io.sockets.sockets.get(
+          caller.socketId
+        );
+        if (callerSocketForConnected) {
+          callerSocketForConnected.emit("callConnected", {
+            ...callData,
+            receiverSocketId: receiver.socketId,
+            platform: callData.platform,
+          });
+          console.log("✅ callConnected sent to caller");
+        }
+
         // Notify receiver that call is now active
         const receiverSocket = io.sockets.sockets.get(receiver.socketId);
         if (receiverSocket) {
